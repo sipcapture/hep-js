@@ -48,3 +48,6 @@ rcinfo = { type: 'HEP',
 }
 ```
 
+#### HEP/EEP Specs:
+
+(http://hep.sipcapture.org/)[http://hep.sipcapture.org/]
