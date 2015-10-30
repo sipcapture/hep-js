@@ -1,3 +1,5 @@
+[![Dependency Status](https://david-dm.org/sipcapture/hep-js.svg)](https://david-dm.org/sipcapture/hep-js)
+
 [![Logo](https://avatars0.githubusercontent.com/u/6690913?v=3&s=100)](http://sipcapture.org)
 
 # hep-js
