@@ -23,6 +23,8 @@
  * 
  **/
 
+var debug = false;
+
 module.exports = {
   /**
    * Encode HEP3 Packet from JSON Object.
