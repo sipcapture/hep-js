@@ -1,6 +1,6 @@
 {
   "name": "hep-js",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "HEP3 Library for Node.JS",
   "main": "index.js",
   "scripts": {
@@ -20,7 +20,9 @@
     "sipcapture",
     "pcapture",
     "sip",
-    "voip"
+    "voip",
+    "logs",
+    "cdr"
   ],
   "author": "Lorenzo Mangani <lorenzo.mangani@gmail.com> (http://sipcapture.org/)",
   "license": "GPLv2",
