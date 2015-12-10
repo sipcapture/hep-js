@@ -152,7 +152,7 @@ module.exports = {
 			payload_chunk
 		]);
 
-	} else if ( rcinfo.proto_type == 33 && rcinfo.correlation_id.length) {
+	} else if ( ( rcinfo.proto_type == 33 || rcinfo.proto_type == 5 )&& rcinfo.correlation_id.length) {
 		
 		// create correlation chunk
 	        var correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
