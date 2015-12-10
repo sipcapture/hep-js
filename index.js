@@ -190,7 +190,7 @@ module.exports = {
 	        tmpA = ToUint16(rcinfo.mos);
 		var mos = new Buffer (8);
 		mos.writeUInt16BE(0x0000, 0);
-		mos.writeUInt16BE(0x0033, 2);
+		mos.writeUInt16BE(0x0020, 2);
 		mos.writeUInt16BE(tmpA,6);
 		mos.writeUInt16BE(mos.length,4);
 		
