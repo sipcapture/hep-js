@@ -126,59 +126,7 @@ module.exports = {
 	payload_chunk.write(msg, 6, msg.length);
 	payload_chunk.writeUInt16BE(payload_chunk.length,4);
 
-	if ( rcinfo.proto_type == 100 && rcinfo.correlation_id.length) {
-		
-		// create correlation chunk
-	        var correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
-	        correlation_chunk.writeUInt16BE(0x0000, 0);
-	        correlation_chunk.writeUInt16BE(0x0011, 2);
-	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
-	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
-		
-		var hep_message = Buffer.concat([
-			header, 
-			ip_family,
-			ip_proto,
-			src_ip4,
-			dst_ip4,
-			src_port,
-			dst_port,
-			time_sec,
-			time_usec,
-			proto_type,
-			capt_id,
-			auth_chunk,
-			correlation_chunk,
-			payload_chunk
-		]);
-
-	} else if ( ( rcinfo.proto_type == 33 || rcinfo.proto_type == 5 )&& rcinfo.correlation_id.length) {
-		
-		// create correlation chunk
-	        var correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
-	        correlation_chunk.writeUInt16BE(0x0000, 0);
-	        correlation_chunk.writeUInt16BE(0x0011, 2);
-	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
-	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
-		
-		var hep_message = Buffer.concat([
-			header, 
-			ip_family,
-			ip_proto,
-			src_ip4,
-			dst_ip4,
-			src_port,
-			dst_port,
-			time_sec,
-			time_usec,
-			proto_type,
-			capt_id,
-			auth_chunk,
-			correlation_chunk,
-			payload_chunk
-		]);
-			
-	} else 	if (rcinfo.proto_type == 32 && rcinfo.correlation_id.length && rcinfo.mos.length) {
+	if (rcinfo.proto_type == 32 && rcinfo.correlation_id.length && rcinfo.mos.length) {
 		
 		// create correlation chunk
 	        var correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
@@ -211,7 +159,34 @@ module.exports = {
 			mos
 		]);		
 		
-	} else {
+	}	
+	else if (rcinfo.correlation_id.length) {
+		
+		// create correlation chunk
+	        var correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
+	        correlation_chunk.writeUInt16BE(0x0000, 0);
+	        correlation_chunk.writeUInt16BE(0x0011, 2);
+	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
+	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
+		
+		var hep_message = Buffer.concat([
+			header, 
+			ip_family,
+			ip_proto,
+			src_ip4,
+			dst_ip4,
+			src_port,
+			dst_port,
+			time_sec,
+			time_usec,
+			proto_type,
+			capt_id,
+			auth_chunk,
+			correlation_chunk,
+			payload_chunk
+		]);
+	}	
+	else {
 
 		var hep_message = Buffer.concat([
 			header, 
