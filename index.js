@@ -73,15 +73,13 @@ module.exports = {
 	dst_ip4.writeUInt16BE(dst_ip4.length,4);
 	
 	var src_port = new Buffer (8);
-	//var tmpA = ToUint16(rcinfo.srcPort);
-	var tmpA = ntohs(parseInt(rcinfo.srcPort,10));
+	var tmpA = swap16(parseInt(rcinfo.srcPort));
 	src_port.writeUInt16BE(0x0000, 0);
 	src_port.writeUInt16BE(0x0007, 2);
 	src_port.writeUInt16BE(tmpA,6);
 	src_port.writeUInt16BE(src_port.length,4);
 
-	//tmpA = ToUint16(rcinfo.dstPort);
-	tmpA = ntohs(parseInt(rcinfo.dstPort,10));
+	tmpA = swap16(parseInt(rcinfo.dstPort));
 
 	var dst_port = new Buffer (8);
 	dst_port.writeUInt16BE(0x0000, 0);
@@ -245,29 +243,17 @@ var ToInteger =function (x) {
         return x < 0 ? Math.ceil(x) : Math.floor(x);
 }
 
-var ntohs = function(val) {
-         return ((val & 0xFF) << 8)
+var swap16 = function (val) {
+    return ((val & 0xFF) << 8)
            | ((val >> 8) & 0xFF);
-};
+}
 
-var ntohsStr = function(s, i) {
-	return ((0xff & s.charCodeAt(i)) << 8) |
-	       ((0xff & s.charCodeAt(i + 1)));
-};
-
-var htonl = function(val) {
- return ((val & 0xFF) << 24)
+var swap32 = function (val) {
+    return ((val & 0xFF) << 24)
            | ((val & 0xFF00) << 8)
            | ((val >> 8) & 0xFF00)
            | ((val >> 24) & 0xFF);
-};
-
-var ntohl = function(b, i) {
-	return ((0xff & b[i]) << 24) |
-	       ((0xff & b[i + 1]) << 16) |
-	       ((0xff & b[i + 2]) << 8) |
-	       ((0xff & b[i + 3]));
-};
+}
 
 var inet_pton = function inet_pton(a) {
   
