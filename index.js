@@ -73,14 +73,13 @@ module.exports = {
 	dst_ip4.writeUInt16BE(dst_ip4.length,4);
 	
 	var src_port = new Buffer (8);
-	var tmpA = swap16(parseInt(rcinfo.srcPort));
+	var tmpA = ntohs(parseInt(rcinfo.srcPort,10));
 	src_port.writeUInt16BE(0x0000, 0);
 	src_port.writeUInt16BE(0x0007, 2);
 	src_port.writeUInt16BE(tmpA,6);
 	src_port.writeUInt16BE(src_port.length,4);
 
-	tmpA = swap16(parseInt(rcinfo.dstPort));
-
+	tmpA = ntohs(parseInt(rcinfo.dstPort, 10));
 	var dst_port = new Buffer (8);
 	dst_port.writeUInt16BE(0x0000, 0);
 	dst_port.writeUInt16BE(0x0008, 2);
@@ -243,12 +242,12 @@ var ToInteger =function (x) {
         return x < 0 ? Math.ceil(x) : Math.floor(x);
 }
 
-var swap16 = function (val) {
+var ntohs = function (val) {
     return ((val & 0xFF) << 8)
            | ((val >> 8) & 0xFF);
 }
 
-var swap32 = function (val) {
+var ntohl = function (val) {
     return ((val & 0xFF) << 24)
            | ((val & 0xFF00) << 8)
            | ((val >> 8) & 0xFF00)
