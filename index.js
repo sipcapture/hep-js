@@ -74,14 +74,14 @@ module.exports = {
 	
 	var src_port = new Buffer (8);
 	//var tmpA = ToUint16(rcinfo.srcPort);
-	var tmpA = ntohs(rcinfo.srcPort);
+	var tmpA = ntohs(ToUint16(rcinfo.srcPort));
 	src_port.writeUInt16BE(0x0000, 0);
 	src_port.writeUInt16BE(0x0007, 2);
 	src_port.writeUInt16BE(tmpA,6);
 	src_port.writeUInt16BE(src_port.length,4);
 
 	//tmpA = ToUint16(rcinfo.dstPort);
-	tmpA = ntohs(rcinfo.dstPort);
+	tmpA = ntohs(ToUint16(rcinfo.dstPort));
 
 	var dst_port = new Buffer (8);
 	dst_port.writeUInt16BE(0x0000, 0);
