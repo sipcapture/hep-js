@@ -245,9 +245,9 @@ var ToInteger =function (x) {
         return x < 0 ? Math.ceil(x) : Math.floor(x);
 }
 
-var ntohs = function(b, i) {
-	return ((0xff & b[i]) << 8) | 
-	       ((0xff & b[i + 1]));
+var ntohs = function(val) {
+         return ((val & 0xFF) << 8)
+           | ((val >> 8) & 0xFF);
 };
 
 var ntohsStr = function(s, i) {
@@ -255,11 +255,11 @@ var ntohsStr = function(s, i) {
 	       ((0xff & s.charCodeAt(i + 1)));
 };
 
-var htonl = function(b, i, v) {
-	b[i] = (0xff & (v >> 24));
-	b[i + 1] = (0xff & (v >> 16));
-	b[i + 2] = (0xff & (v >> 8));
-	b[i + 3] = (0xff & (v));
+var htonl = function(val) {
+ return ((val & 0xFF) << 24)
+           | ((val & 0xFF00) << 8)
+           | ((val >> 8) & 0xFF00)
+           | ((val >> 24) & 0xFF);
 };
 
 var ntohl = function(b, i) {
