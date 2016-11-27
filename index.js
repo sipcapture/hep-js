@@ -73,13 +73,21 @@ module.exports = {
 	dst_ip4.writeUInt16BE(dst_ip4.length,4);
 	
 	var src_port = new Buffer (8);
-	var tmpA = ntohs(parseInt(rcinfo.srcPort,10));
+	if (rcinfo.proto_type == 1) {  
+		var tmpA = parseInt(rcinfo.srcPort,10);
+	} else {
+		var tmpA = ntohs(parseInt(rcinfo.srcPort,10));
+	}
 	src_port.writeUInt16BE(0x0000, 0);
 	src_port.writeUInt16BE(0x0007, 2);
 	src_port.writeUInt16BE(tmpA,6);
 	src_port.writeUInt16BE(src_port.length,4);
 
-	tmpA = ntohs(parseInt(rcinfo.dstPort, 10));
+	if (rcinfo.proto_type == 1) { 
+		tmpA = parseInt(rcinfo.dstPort, 10);
+	} else {
+		tmpA = ntohs(parseInt(rcinfo.dstPort, 10));
+	}
 	var dst_port = new Buffer (8);
 	dst_port.writeUInt16BE(0x0000, 0);
 	dst_port.writeUInt16BE(0x0008, 2);
