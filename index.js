@@ -125,7 +125,7 @@ module.exports = {
 	payload_chunk.write(msg, 6, msg.length);
 	payload_chunk.writeUInt16BE(payload_chunk.length,4);
 
-	if ((rcinfo.proto_type == 32 || rcinfo.proto_type == 35) && rcinfo.correlation_id.length && rcinfo.mos.length) {
+	if ((rcinfo.proto_type == 32 || rcinfo.proto_type == 35) && rcinfo.correlation_id.length) {
 		
 		// create correlation chunk
 	        var correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
@@ -137,8 +137,7 @@ module.exports = {
 	        tmpA = ToUint16(rcinfo.mos);
 		var mos = new Buffer (8);
 		mos.writeUInt16BE(0x0000, 0);
-		if (rcinfo.proto_type == 35) mos.writeUInt16BE(0x0023, 2);
-		else mos.writeUInt16BE(0x0020, 2);
+		mos.writeUInt16BE(0x0020, 2);
 		mos.writeUInt16BE(tmpA,6);
 		mos.writeUInt16BE(mos.length,4);
 		
