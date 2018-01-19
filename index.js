@@ -160,7 +160,7 @@ module.exports = {
 		
 	}	
 	// HEP TYPE 101 w/ mandatory json_chunk (string)
-	else if (rcinfo.transaction_type.length && rcinfo.correlation_id.length) {
+	else if (rcinfo.transaction_type && rcinfo.transaction_type.length && rcinfo.correlation_id.length) {
 		
 		// create correlation chunk
 	        var correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
