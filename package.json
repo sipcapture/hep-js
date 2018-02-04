@@ -1,6 +1,6 @@
 {
   "name": "hep-js",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "HEP3 Library for Node.JS",
   "main": "index.js",
   "scripts": {
@@ -14,6 +14,8 @@
     "hep",
     "hep3",
     "encapsulation",
+    "encoder",
+    "decoder",
     "packet",
     "pcap",
     "homer",
@@ -32,5 +34,8 @@
   "devDependencies": {
     "mocha": "~2.2.5",
     "chai": "~3.0.0"
+  },
+  "dependencies": {
+    "binary-parser": "^1.3.2"
   }
 }
