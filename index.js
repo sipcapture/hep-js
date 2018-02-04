@@ -408,11 +408,12 @@ var hepDecode = function(data){
 	return { capturePass: data.chunk.slice(0,data.chunk.length-6).toString() };
     case 15:
 	return { payload: data.chunk.toString() };
+    case 16:
+	return { correlation_id: data.chunk.slice(0,data.chunk.length-6).toString() };
     default:
 	return {};
   }
 };
-
 
 
 /*
