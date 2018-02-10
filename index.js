@@ -1,11 +1,11 @@
 /**
  * HEP-js: A simple HEP3 Library for Node.JS
- * 
+ *
  * Copyright (C) 2015 Lorenzo Mangani (SIPCAPTURE.ORG)
  * Copyright (C) 2015 Alexandr Dubovikov (SIPCAPTURE.ORG)
  * Copyright (C) 2015 QXIP BV (QXIP.NET)
  *
- * Project Homepage: http://github.com/sipcapture 
+ * Project Homepage: http://github.com/sipcapture
  *
  * This file is part of HEP-js
  *
@@ -13,19 +13,52 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * HEP-js is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
- * 
+ *
  **/
 
 var debug = false;
 
+// Module import
+var Parser = require("binary-parser").Parser;
+
 module.exports = {
+  /**
+   * Decode HEP3 Packet to JSON Object.
+   *
+   * @param  {Buffer} hep message
+   * @return {String}
+   */
+  decapsulate: function(message) {
+    if (debug) console.log('Decoding HEP3 Packet...');
+    try {
+	var HEP = hepHeader.parse(message);
+	if(HEP.payload && HEP.payload.length>0){
+	  var data = HEP.payload;
+	  var tot = 0;
+	  var decoded = {};
+	  var PAYLOAD;
+	  while(true){
+	    PAYLOAD = hepParse.parse( data.slice(tot) );
+	    var tmp = hepDecode(PAYLOAD);
+	    for (var attrname in tmp) { decoded[attrname] = tmp[attrname]; }
+	    tot += PAYLOAD.length;
+	    if(tot>=HEP.payload.length) { break; }
+	  }
+	  if(debug) console.log(decoded);
+	  return decoded;
+	}
+    } catch(e) {
+	return false;
+    }
+
+  },
   /**
    * Encode HEP3 Packet from JSON Object.
    *
@@ -52,7 +85,6 @@ module.exports = {
 	ip_proto.writeUInt16BE(ip_proto.length,4);
 
 	/*ip*/
-	//var tmpip = inet_pton(rcinfo.srcIp);
 	var d = rcinfo.srcIp.split('.');
 	var tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
 
@@ -62,7 +94,6 @@ module.exports = {
 	src_ip4.writeUInt32BE(tmpip,6);
 	src_ip4.writeUInt16BE(src_ip4.length,4);
 
-	//tmpip = inet_pton(rcinfo.dstIp);
 	d = rcinfo.dstIp.split('.');
 	tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
 
@@ -71,7 +102,7 @@ module.exports = {
 	dst_ip4.writeUInt16BE(0x0004, 2);
 	dst_ip4.writeUInt32BE(tmpip,6);
 	dst_ip4.writeUInt16BE(dst_ip4.length,4);
-	
+
 	var src_port = new Buffer (8);
 	var tmpA = parseInt(rcinfo.srcPort,10);
 	src_port.writeUInt16BE(0x0000, 0);
@@ -125,23 +156,25 @@ module.exports = {
 	payload_chunk.write(msg, 6, msg.length);
 	payload_chunk.writeUInt16BE(payload_chunk.length,4);
 
+	var hep_message, correlation_chunk;
+
 	if ((rcinfo.proto_type == 32 || rcinfo.proto_type == 35) && rcinfo.correlation_id.length) {
-		
+
 		// create correlation chunk
-	        var correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
+	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(0x0000, 0);
 	        correlation_chunk.writeUInt16BE(0x0011, 2);
 	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
-	        
+
 	        tmpA = ToUint16(rcinfo.mos);
 		var mos = new Buffer (8);
 		mos.writeUInt16BE(0x0000, 0);
 		mos.writeUInt16BE(0x0020, 2);
 		mos.writeUInt16BE(tmpA,6);
 		mos.writeUInt16BE(mos.length,4);
-		
-		var hep_message = Buffer.concat([
+
+		hep_message = Buffer.concat([
 			header, 
 			ip_family,
 			ip_proto,
@@ -156,27 +189,27 @@ module.exports = {
 			auth_chunk,
 			correlation_chunk,
 			mos
-		]);		
-		
-	}	
+		]);
+
+	}
 	// HEP TYPE 101 w/ mandatory json_chunk (string)
 	else if (rcinfo.transaction_type && rcinfo.transaction_type.length && rcinfo.correlation_id.length) {
-		
+
 		// create correlation chunk
-	        var correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
+	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(0x0000, 0);
 	        correlation_chunk.writeUInt16BE(0x0011, 2);
 	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
-	        
+
 	        // create transaction_type chunk
 	        var transaction_type = new Buffer (6 + rcinfo.transaction_type.length);
 	        transaction_type.writeUInt16BE(0x0000, 0);
 	        transaction_type.writeUInt16BE(0x0024, 2);
 	        transaction_type.write(rcinfo.transaction_type,6, rcinfo.transaction_type.length);
 	        transaction_type.writeUInt16BE(transaction_type.length,4);
-		
-		var hep_message = Buffer.concat([
+
+		hep_message = Buffer.concat([
 			header, 
 			ip_family,
 			ip_proto,
@@ -192,19 +225,19 @@ module.exports = {
 			correlation_chunk,
 			transaction_type,
 			payload_chunk
-		]);		
-		
+		]);
+
 	}
 	else if (rcinfo.correlation_id.length) {
-		
+
 		// create correlation chunk
-	        var correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
+	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(0x0000, 0);
 	        correlation_chunk.writeUInt16BE(0x0011, 2);
 	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
 		
-		var hep_message = Buffer.concat([
+		hep_message = Buffer.concat([
 			header, 
 			ip_family,
 			ip_proto,
@@ -220,11 +253,11 @@ module.exports = {
 			correlation_chunk,
 			payload_chunk
 		]);
-	}	
+	}
 	else {
 
-		var hep_message = Buffer.concat([
-			header, 
+		hep_message = Buffer.concat([
+			header,
 			ip_family,
 			ip_proto,
 			src_ip4,
@@ -238,11 +271,9 @@ module.exports = {
 			auth_chunk,
 			payload_chunk
 		]);
-		
+
 	}
 	hep_message.writeUInt16BE(hep_message.length, 4);
-	//console.log(hep_message);
-
 	return hep_message;
 
   },
@@ -259,34 +290,34 @@ module.exports = {
 };
 
 
-/* Functions */ 
+/* Functions */
 
 var modulo = function (a, b) {
         return a - Math.floor(a/b)*b;
-}
+};
 
 var ToUint32 = function (x) {
         return modulo(ToInteger(x), Math.pow(2, 32));
-}
+};
 
 var ToUint16 = function (x) {
         return modulo(ToInteger(x), Math.pow(2, 16));
-}
+};
 
 var ToInteger =function (x) {
         x = Number(x);
         return x < 0 ? Math.ceil(x) : Math.floor(x);
-}
+};
 
 var ntohl = function (val) {
     return ((val & 0xFF) << 24)
            | ((val & 0xFF00) << 8)
            | ((val >> 8) & 0xFF00)
            | ((val >> 24) & 0xFF);
-}
+};
 
 var inet_pton = function inet_pton(a) {
-  
+
   var r, m, x, i, j, f = String.fromCharCode;
   // IPv4
   m = a.match(/^(?:\d{1,3}(?:\.|$)){4}/);
@@ -328,8 +359,61 @@ var inet_pton = function inet_pton(a) {
   }
   // Invalid IP.
   return false;
-}
+};
 
+// Build an IP packet header Parser
+var hepHeader = new Parser()
+  .endianess("big")
+  .string("hep", { length: 4, stripNull: true, assert: "HEP3" })
+  .uint16("hepLength")
+  .buffer("payload", { length: "hepLength" });
+
+var hepParse = new Parser()
+  .endianess("big")
+  .uint16("vendor")
+  .uint16("type")
+  .uint16("length")
+  .buffer("chunk", { length: "length" });
+
+var hepIps = new Parser()
+  .endianess("big")
+  .array("ip",{
+     type: "uint8",
+     length: 4
+  });
+
+var hepDecode = function(data){
+  switch(data.type) {
+    case 1:
+	return { protocolFamily: data.chunk.readUInt8() };
+    case 2:
+	return { protocol: data.chunk.readUInt8() };
+    case 3:
+	return { srcIp: hepIps.parse(data.chunk).ip.join('.') };
+    case 4:
+	return { dstIp: hepIps.parse(data.chunk).ip.join('.') };
+    case 7:
+	return { srcPort: data.chunk.readUInt16BE() };
+    case 8:
+	return { dstPort: data.chunk.readUInt16BE() };
+    case 9:
+	return { timeSeconds: data.chunk.readUInt32BE() };
+    case 10:
+	return { timeUseconds: data.chunk.readUInt32BE() };
+    case 11:
+	return { payloadType: data.chunk.readUInt8() };
+    case 12:
+	return { captureId: data.chunk.readUInt32BE() };
+    case 14:
+	return { capturePass: data.chunk.slice(0,data.chunk.length-6).toString() };
+    case 15:
+	return { payload: data.chunk.toString() };
+    case 16:
+	return { correlation_id: data.chunk.slice(0,data.chunk.length-6).toString() };
+    default:
+	return {};
+  }
+};
 
 
 /*
