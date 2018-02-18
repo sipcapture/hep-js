@@ -33,7 +33,7 @@ module.exports = {
    * Decode HEP3 Packet to JSON Object.
    *
    * @param  {Buffer} hep message
-   * @return {String}
+   * @return {Object}
    */
   decapsulate: function(message) {
     if (debug) console.log('Decoding HEP3 Packet...');
@@ -47,6 +47,7 @@ module.exports = {
 	  while(true){
 	    PAYLOAD = hepParse.parse( data.slice(tot) );
 	    var tmp = hepDecode(PAYLOAD);
+	    decoded = deepMerge(decoded, tmp);
 	    for (var attrname in tmp) { decoded[attrname] = tmp[attrname]; }
 	    tot += PAYLOAD.length;
 	    if(tot>=HEP.payload.length) { break; }
@@ -64,7 +65,7 @@ module.exports = {
    *
    * @param  {String} sip_msg
    * @param  {String} hep_json
-   * @return {String}
+   * @return {Buffer} hep message
    */
   encapsulate: function(msg,rcinfo) {
 	if (debug) console.log('Sending HEP3 Packet...');
@@ -385,35 +386,48 @@ var hepIps = new Parser()
 var hepDecode = function(data){
   switch(data.type) {
     case 1:
-	return { protocolFamily: data.chunk.readUInt8() };
+	return { rcinfo: { protocolFamily: data.chunk.readUInt8() } };
     case 2:
-	return { protocol: data.chunk.readUInt8() };
+	return { rcinfo: { protocol: data.chunk.readUInt8() } };
     case 3:
-	return { srcIp: hepIps.parse(data.chunk).ip.join('.') };
+	return { rcinfo: { srcIp: hepIps.parse(data.chunk).ip.join('.') } };
     case 4:
-	return { dstIp: hepIps.parse(data.chunk).ip.join('.') };
+	return { rcinfo: { dstIp: hepIps.parse(data.chunk).ip.join('.') } };
     case 7:
-	return { srcPort: data.chunk.readUInt16BE() };
+	return { rcinfo: { srcPort: data.chunk.readUInt16BE() } };
     case 8:
-	return { dstPort: data.chunk.readUInt16BE() };
+	return { rcinfo: { dstPort: data.chunk.readUInt16BE() } };
     case 9:
-	return { timeSeconds: data.chunk.readUInt32BE() };
+	return { rcinfo: { timeSeconds: data.chunk.readUInt32BE() } };
     case 10:
-	return { timeUseconds: data.chunk.readUInt32BE() };
+	return { rcinfo: { timeUseconds: data.chunk.readUInt32BE() } };
     case 11:
-	return { payloadType: data.chunk.readUInt8() };
+	return { rcinfo: { payloadType: data.chunk.readUInt8() } };
     case 12:
-	return { captureId: data.chunk.readUInt32BE() };
+	return { rcinfo: { captureId: data.chunk.readUInt32BE() } };
     case 14:
-	return { capturePass: data.chunk.slice(0,data.chunk.length-6).toString() };
+	return { rcinfo: { capturePass: data.chunk.slice(0,data.chunk.length-6).toString() } };
+    case 16:
+	return { rcinfo: { correlation_id: data.chunk.slice(0,data.chunk.length-6).toString() } };
     case 15:
 	return { payload: data.chunk.toString() };
-    case 16:
-	return { correlation_id: data.chunk.slice(0,data.chunk.length-6).toString() };
     default:
 	return {};
   }
 };
+
+function deepMerge(o1,o2) {
+ for (var k in o2) {
+   if (typeof(o2[k])=='object') {
+       if(!o1[k]) o1[k] = {};
+       //console.log(merge(o1[k],o2[k]) );
+       o1[k] = merge(o1[k],o2[k]);
+   } else { 
+       o1[k] = o2[k];
+   }
+ }
+ return o1;
+}
 
 
 /*
@@ -424,18 +438,19 @@ var hepDecode = function(data){
 var hepPacket = {
        "type": "HEP",
        "version": 3,
-       "protocolFamily": 2,
-       "protocol": 17,
-       "srcIp": "192.168.3.12",
-       "srcPort": 5060,
-       "dstIp": "192.168.3.11",
-       "dstPort": 5060,
-       "timestamp": "2015-06-11T12:36:08:222Z",
-       "timestampUSecs": 0,
-       "captureId": 241,
-       "capturePass": "myHep",
-       "vendorChunks": [],
-       "payload_type": "SIP",
+       "rcinfo": {
+         "protocolFamily": 2,
+         "protocol": 17,
+         "srcIp": "192.168.3.12",
+         "srcPort": 5060,
+         "dstIp": "192.168.3.11",
+         "dstPort": 5060,
+         "timestamp": "2015-06-11T12:36:08:222Z",
+         "timestampUSecs": 0,
+         "captureId": 241,
+         "capturePass": "myHep",
+         "payload_type": "SIP"
+       },
        "payload": {
            "data": "INVITE sip:9999@homer SIP/2.0\r\n..."
        }
