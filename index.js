@@ -421,7 +421,7 @@ function deepMerge(o1,o2) {
    if (typeof(o2[k])=='object') {
        if(!o1[k]) o1[k] = {};
        //console.log(merge(o1[k],o2[k]) );
-       o1[k] = merge(o1[k],o2[k]);
+       o1[k] = deepMerge(o1[k],o2[k]);
    } else { 
        o1[k] = o2[k];
    }
