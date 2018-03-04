@@ -18,8 +18,9 @@ npm install hep-js
 
 ### Example Usage:
 ```
-var hep_encoder = HEPjs.encapsulate(payload,rcinfo);
-var hep_decoder = HEPjs.decapsulate(buffer);
+const HEPjs = require('hep-js');
+var hep_encoder = HEPjs.encapsulate(payload,rcinfo); // returns data buffer
+var hep_decoder = HEPjs.decapsulate(buffer); // returns JSON Object {payload,rcinfo}
 
 ```
 
