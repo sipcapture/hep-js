@@ -7,6 +7,7 @@ HEP: Javascript/Node implementation of HEP/EEP Encapsulation Protocol
 
 
 This module provides Node with [HEP/EEP](http://hep.sipcapture.org) packet encapsulation and decapsulation capabilities.
+
 For more information about HEP and SIPCAPTURE Projects, please visit [http://sipcapture.org](http://sipcapture.org)
 
 ### Install:
@@ -55,3 +56,7 @@ rcinfo = { type: 'HEP',
 #### HEP/EEP Specs:
 
 http://hep.sipcapture.org/
+
+
+###### This Project is sponsored by [QXIP BV](http://qxip.net)
+
