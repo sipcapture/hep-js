@@ -27,6 +27,7 @@ var debug = false;
 
 // Module import
 var Parser = require("binary-parser").Parser;
+var mixinDeep = require('mixin-deep');
 
 module.exports = {
   /**
@@ -47,8 +48,7 @@ module.exports = {
 	  while(true){
 	    PAYLOAD = hepParse.parse( data.slice(tot) );
 	    var tmp = hepDecode(PAYLOAD);
-	    decoded = deepMerge(decoded, tmp);
-	    for (var attrname in tmp) { decoded[attrname] = tmp[attrname]; }
+	    decoded = mixinDeep(decoded, tmp);
 	    tot += PAYLOAD.length;
 	    if(tot>=HEP.payload.length) { break; }
 	  }
