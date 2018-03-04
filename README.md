@@ -6,7 +6,7 @@
 HEP: Javascript/Node implementation of HEP/EEP Encapsulation Protocol
 
 
-This module provides Node with [HEP/EEP](http://hep.sipcapture.org) packet encapsulation capabilities.
+This module provides Node with [HEP/EEP](http://hep.sipcapture.org) packet encapsulation and decapsulation capabilities.
 For more information about HEP and SIPCAPTURE Projects, please visit [http://sipcapture.org](http://sipcapture.org)
 
 ### Install:
@@ -17,7 +17,9 @@ npm install hep-js
 
 ### Example Usage:
 ```
-var hep_message = HEPjs.encapsulate(payload,rcinfo);
+var hep_encoder = HEPjs.encapsulate(payload,rcinfo);
+var hep_decoder = HEPjs.decapsulate(buffer);
+
 ```
 
 #### Example: payload
