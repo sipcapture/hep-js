@@ -407,10 +407,14 @@ var hepDecode = function(data){
 	return { rcinfo: { captureId: data.chunk.readUInt32BE() } };
     case 14:
 	return { rcinfo: { capturePass: data.chunk.slice(0,data.chunk.length-6).toString() } };
-    case 16:
-	return { rcinfo: { correlation_id: data.chunk.slice(0,data.chunk.length-6).toString() } };
     case 15:
 	return { payload: data.chunk.toString() };
+    case 17:
+        return { rcinfo: { correlation_id: data.chunk.slice(0,data.chunk.length-6).toString() } };
+    case 32:
+	return { rcinfo: { mos: data.chunk.readUInt16BE() } };
+    case 36:
+	return { rcinfo: { transaction_type: data.chunk.readUInt16BE() } };
     default:
 	return {};
   }
