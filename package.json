@@ -1,6 +1,6 @@
 {
   "name": "hep-js",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "HEP3 Library for Node.JS",
   "main": "index.js",
   "scripts": {
