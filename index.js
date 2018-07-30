@@ -229,7 +229,7 @@ module.exports = {
 		]);
 
 	}
-	else if (rcinfo.correlation_id.length) {
+	else if (rcinfo.correlation_id && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
 	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
