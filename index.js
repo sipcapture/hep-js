@@ -189,7 +189,8 @@ module.exports = {
 			capt_id,
 			auth_chunk,
 			correlation_chunk,
-			mos
+			mos,
+			payload_chunk
 		]);
 
 	}
