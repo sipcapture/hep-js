@@ -159,7 +159,7 @@ module.exports = {
 
 	var hep_message, correlation_chunk;
 
-	if ((rcinfo.proto_type == 32 || rcinfo.proto_type == 35) && rcinfo.correlation_id.length) {
+	if ((rcinfo.proto_type == 32 || rcinfo.proto_type == 35 || rcinfo.proto_type == 33 || || rcinfo.proto_type == 34 ) && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
 	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
