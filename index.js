@@ -149,7 +149,7 @@ module.exports = {
 	tmpA = rcinfo.hepNodeName ? rcinfo.hepNodeName : "" + rcinfo.captureId;
 	var hepnodename_chunk = new Buffer (6 + tmpA.length);
 	hepnodename_chunk.writeUInt16BE(0x0000, 0);
-	hepnodename_chunk.writeUInt16BE(0x0026, 2);
+	hepnodename_chunk.writeUInt16BE(0x0019, 2);
 	hepnodename_chunk.write(tmpA,6, tmpA.length);
 	hepnodename_chunk.writeUInt16BE(hepnodename_chunk.length,4);
 
@@ -428,7 +428,7 @@ var hepDecode = function(data){
 	return { rcinfo: { mos: data.chunk.readUInt16BE() } };
     case 36:
 	return { rcinfo: { transaction_type: data.chunk.readUInt16BE() } };
-    case 38:
+    case 25:
 	return { rcinfo: { hepNodeName: data.chunk.slice(0,data.chunk.length-6).toString() } };
     default:
 	return {};
