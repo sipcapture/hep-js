@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2015 Lorenzo Mangani (SIPCAPTURE.ORG)
  * Copyright (C) 2015 Alexandr Dubovikov (SIPCAPTURE.ORG)
- * Copyright (C) 2015 QXIP BV (QXIP.NET)
+ * Copyright (C) 2019 QXIP BV (QXIP.NET)
  *
  * Project Homepage: http://github.com/sipcapture
  *
@@ -144,6 +144,14 @@ module.exports = {
 	capt_id.writeUInt16BE(0x000c, 2);
 	capt_id.writeUInt32BE(tmpA,6);
 	capt_id.writeUInt16BE(capt_id.length,4);
+	  
+	// HEPNodeName w/ Fallback to HEP Capture ID
+	tmpA = rcinfo.hepNodeName ? rcinfo.hepNodeName : "" + rcinfo.captureId;
+	var hepnodename_chunk = new Buffer (6 + tmpA.length);
+	hepnodename_chunk.writeUInt16BE(0x0000, 0);
+	hepnodename_chunk.writeUInt16BE(0x0026, 2);
+	hepnodename_chunk.write(tmpA,6, tmpA.length);
+	hepnodename_chunk.writeUInt16BE(hepnodename_chunk.length,4);
 
 	var auth_chunk = new Buffer (6 + rcinfo.capturePass.length);
 	auth_chunk.writeUInt16BE(0x0000, 0);
@@ -187,6 +195,7 @@ module.exports = {
 			time_usec,
 			proto_type,
 			capt_id,
+			hepnodename_chunk,
 			auth_chunk,
 			correlation_chunk,
 			mos,
@@ -223,6 +232,7 @@ module.exports = {
 			time_usec,
 			proto_type,
 			capt_id,
+			hepnodename_chunk,
 			auth_chunk,
 			correlation_chunk,
 			transaction_type,
@@ -251,6 +261,7 @@ module.exports = {
 			time_usec,
 			proto_type,
 			capt_id,
+			hepnodename_chunk,
 			auth_chunk,
 			correlation_chunk,
 			payload_chunk
@@ -270,6 +281,7 @@ module.exports = {
 			time_usec,
 			proto_type,
 			capt_id,
+			hepnodename_chunk,
 			auth_chunk,
 			payload_chunk
 		]);
@@ -416,6 +428,8 @@ var hepDecode = function(data){
 	return { rcinfo: { mos: data.chunk.readUInt16BE() } };
     case 36:
 	return { rcinfo: { transaction_type: data.chunk.readUInt16BE() } };
+    case 38:
+	return { rcinfo: { hepNodeName: data.chunk.slice(0,data.chunk.length-6).toString() } };
     default:
 	return {};
   }
@@ -453,6 +467,7 @@ var hepPacket = {
          "timestamp": "2015-06-11T12:36:08:222Z",
          "timestampUSecs": 0,
          "captureId": 241,
+	 "hepNodeName": "ams01-voip",
          "capturePass": "myHep",
          "payload_type": "SIP"
        },
