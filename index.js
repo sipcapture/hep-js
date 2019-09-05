@@ -86,7 +86,7 @@ module.exports = {
 	ip_proto.writeUInt16BE(ip_proto.length,4);
 
 	/*ip*/
-	var d = rcinfo.srcIp.split('.');
+	var d = rcinfo.srcIp ? rcinfo.srcIp.split('.') : ['127','0','0','1'];
 	var tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
 
 	var src_ip4 = new Buffer (10);
@@ -95,7 +95,7 @@ module.exports = {
 	src_ip4.writeUInt32BE(tmpip,6);
 	src_ip4.writeUInt16BE(src_ip4.length,4);
 
-	d = rcinfo.dstIp.split('.');
+	d = rcinfo.dstIp ? rcinfo.dstIp.split('.') : ['127','0','0','1'];
 	tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
 
 	var dst_ip4 = new Buffer (10);
@@ -105,14 +105,14 @@ module.exports = {
 	dst_ip4.writeUInt16BE(dst_ip4.length,4);
 
 	var src_port = new Buffer (8);
-	var tmpA = parseInt(rcinfo.srcPort,10);
+	var tmpA = rcinfo.srcPort ? parseInt(rcinfo.srcPort,10) : 0;
 	src_port.writeUInt16BE(0x0000, 0);
 	src_port.writeUInt16BE(0x0007, 2);
 	src_port.writeUInt16BE(tmpA,6);
 	src_port.writeUInt16BE(src_port.length,4);
 
 	var dst_port = new Buffer (8);
-	tmpA = parseInt(rcinfo.dstPort, 10);
+	tmpA = rcinfo.dstPort ? parseInt(rcinfo.dstPort, 10) : 0;
 	dst_port.writeUInt16BE(0x0000, 0);
 	dst_port.writeUInt16BE(0x0008, 2);
 	dst_port.writeUInt16BE(tmpA,6);
