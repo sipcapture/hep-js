@@ -380,14 +380,14 @@ var hepHeader = new Parser()
   .endianess("big")
   .string("hep", { length: 4, stripNull: true, assert: "HEP3" })
   .uint16("hepLength")
-  .buffer("payload", { length: "hepLength" });
+  .buffer("payload", { length: function () {return this.hepLength - 6; } }); // Length of HepMessage is defined including the 6 Byte Header
 
 var hepParse = new Parser()
   .endianess("big")
   .uint16("vendor")
   .uint16("type")
   .uint16("length")
-  .buffer("chunk", { length: "length" });
+  .buffer("chunk", { length: function () {return this.length-6;} }); // Length of Chunk is defined including the 6 Byte header
 
 var hepIps = new Parser()
   .endianess("big")
@@ -419,13 +419,13 @@ var hepDecode = function(data){
     case 12:
 	return { rcinfo: { captureId: data.chunk.readUInt32BE() } };
     case 14:
-	return { rcinfo: { capturePass: data.chunk.slice(0,data.chunk.length-6).toString() } };
+	return { rcinfo: { capturePass: data.chunk.toString() } };
     case 15:
 	return { payload: data.chunk.toString() };
     case 17:
-        return { rcinfo: { correlation_id: data.chunk.slice(0,data.chunk.length-6).toString() } };
+        return { rcinfo: { correlation_id: data.chunk.toString() } };
     case 19:
-	return { rcinfo: { hepNodeName: data.chunk.slice(0,data.chunk.length-6).toString() } };
+	return { rcinfo: { hepNodeName: data.chunk.toString() } };
     case 32:
 	return { rcinfo: { mos: data.chunk.readUInt16BE() } };
     case 36:
