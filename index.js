@@ -28,6 +28,7 @@ var debug = false;
 // Module import
 var Parser = require("binary-parser").Parser;
 var mixinDeep = require('mixin-deep');
+var extensions = {};
 
 module.exports = {
   /**
@@ -300,6 +301,10 @@ module.exports = {
   decode: function(hep) {
     return String(hep)
       .toString('utf8');
+  },
+
+  addVendorExtensions: function(json) {
+    extensions = mixinDeep(extensions, json);
   }
 };
 
@@ -431,7 +436,24 @@ var hepDecode = function(data){
     case 36:
 	return { rcinfo: { transaction_type: data.chunk.readUInt16BE() } };
     default:
-	return {};
+	var returnData = {};
+	if(typeof extensions[data.vendor] === 'object' &&
+	   typeof extensions[data.vendor][data.type] === 'object' &&
+	   typeof extensions[data.vendor][data.type].keyName) {
+	    returnData.rcinfo = {};
+	    var keyName = extensions[data.vendor][data.type].keyName;
+	    var decFunc = extensions[data.vendor][data.type].decFunc;
+	    if(typeof decFunc === 'string' && typeof data.chunk['read'+decFunc] === 'function') {
+	      returnData.rcinfo[keyName] = data.chunk['read'+decFunc]();
+	    }
+	    else if(typeof decFunc === 'function') {
+	      returnData.rcinfo[keyName] = decFunc(data.chunk);
+	    }
+	    else {
+	      returnData.rcinfo[keyName] = data.chunk.toString();
+	    }
+	}
+	return returnData;
   }
 };
 
