@@ -70,17 +70,16 @@ module.exports = {
    */
   encapsulate: function(msg,rcinfo) {
 	if (debug) console.log('Sending HEP3 Packet...');
-	var payload_message = new Buffer(msg);
-	var header = new Buffer (6);
+	var header = Buffer.allocUnsafe(6);
 	header.write ("HEP3");
 
-	var ip_family = new Buffer (7);
+	var ip_family = Buffer.allocUnsafe(7);
 	ip_family.writeUInt16BE(0x0000, 0);
 	ip_family.writeUInt16BE(0x0001,2);
-	ip_family.writeUInt8(rcinfo.ip_family,6);
+	ip_family.writeUInt8(rcinfo.protocolFamily,6);
 	ip_family.writeUInt16BE(ip_family.length,4);
 
-	var ip_proto = new Buffer (7);
+	var ip_proto = Buffer.allocUnsafe(7);
 	ip_proto.writeUInt16BE(0x0000, 0);
 	ip_proto.writeUInt16BE(0x0002, 2);
 	ip_proto.writeUInt8(rcinfo.protocol,6);
@@ -90,7 +89,7 @@ module.exports = {
 	var d = rcinfo.srcIp ? rcinfo.srcIp.split('.') : ['127','0','0','1'];
 	var tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
 
-	var src_ip4 = new Buffer (10);
+	var src_ip4 = Buffer.allocUnsafe(10);
 	src_ip4.writeUInt16BE(0x0000, 0);
 	src_ip4.writeUInt16BE(0x0003, 2);
 	src_ip4.writeUInt32BE(tmpip,6);
@@ -99,48 +98,48 @@ module.exports = {
 	d = rcinfo.dstIp ? rcinfo.dstIp.split('.') : ['127','0','0','1'];
 	tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
 
-	var dst_ip4 = new Buffer (10);
+	var dst_ip4 = Buffer.allocUnsafe(10);
 	dst_ip4.writeUInt16BE(0x0000, 0);
 	dst_ip4.writeUInt16BE(0x0004, 2);
 	dst_ip4.writeUInt32BE(tmpip,6);
 	dst_ip4.writeUInt16BE(dst_ip4.length,4);
 
-	var src_port = new Buffer (8);
+	var src_port = Buffer.allocUnsafe(8);
 	var tmpA = rcinfo.srcPort ? parseInt(rcinfo.srcPort,10) : 0;
 	src_port.writeUInt16BE(0x0000, 0);
 	src_port.writeUInt16BE(0x0007, 2);
 	src_port.writeUInt16BE(tmpA,6);
 	src_port.writeUInt16BE(src_port.length,4);
 
-	var dst_port = new Buffer (8);
+	var dst_port = Buffer.allocUnsafe(8);
 	tmpA = rcinfo.dstPort ? parseInt(rcinfo.dstPort, 10) : 0;
 	dst_port.writeUInt16BE(0x0000, 0);
 	dst_port.writeUInt16BE(0x0008, 2);
 	dst_port.writeUInt16BE(tmpA,6);
 	dst_port.writeUInt16BE(dst_port.length,4);
 
-	tmpA = ToUint32(rcinfo.time_sec);
-	var time_sec = new Buffer (10);
+	tmpA = ToUint32(rcinfo.timeSeconds);
+	var time_sec = Buffer.allocUnsafe(10);
 	time_sec.writeUInt16BE(0x0000, 0);
 	time_sec.writeUInt16BE(0x0009, 2);
 	time_sec.writeUInt32BE(tmpA,6);
 	time_sec.writeUInt16BE(time_sec.length,4);
 
-	tmpA = ToUint32(rcinfo.time_usec);
-	var time_usec = new Buffer (10);
+	tmpA = ToUint32(rcinfo.timeUseconds);
+	var time_usec = Buffer.allocUnsafe(10);
 	time_usec.writeUInt16BE(0x0000, 0);
 	time_usec.writeUInt16BE(0x000a, 2);
 	time_usec.writeUInt32BE(tmpA,6);
 	time_usec.writeUInt16BE(time_usec.length,4);
 
-	var proto_type = new Buffer (7);
+	var proto_type = Buffer.allocUnsafe(7);
 	proto_type.writeUInt16BE(0x0000, 0);
 	proto_type.writeUInt16BE(0x000b,2);
-	proto_type.writeUInt8(rcinfo.proto_type,6);
+	proto_type.writeUInt8(rcinfo.payloadType,6);
 	proto_type.writeUInt16BE(proto_type.length,4);
 
 	tmpA = ToUint32(rcinfo.captureId);
-	var capt_id = new Buffer (10);
+	var capt_id = Buffer.allocUnsafe(10);
 	capt_id.writeUInt16BE(0x0000, 0);
 	capt_id.writeUInt16BE(0x000c, 2);
 	capt_id.writeUInt32BE(tmpA,6);
@@ -148,37 +147,84 @@ module.exports = {
 	  
 	// HEPNodeName w/ Fallback to HEP Capture ID
 	tmpA = rcinfo.hepNodeName ? rcinfo.hepNodeName : "" + rcinfo.captureId;
-	var hepnodename_chunk = new Buffer (6 + tmpA.length);
+	var hepnodename_chunk = Buffer.allocUnsafe(6 + tmpA.length);
 	hepnodename_chunk.writeUInt16BE(0x0000, 0);
 	hepnodename_chunk.writeUInt16BE(0x0013, 2);
 	hepnodename_chunk.write(tmpA,6, tmpA.length);
 	hepnodename_chunk.writeUInt16BE(hepnodename_chunk.length,4);
 
-	var auth_chunk = new Buffer (6 + rcinfo.capturePass.length);
-	auth_chunk.writeUInt16BE(0x0000, 0);
-	auth_chunk.writeUInt16BE(0x000e, 2);
-	auth_chunk.write(rcinfo.capturePass,6, rcinfo.capturePass.length);
-	auth_chunk.writeUInt16BE(auth_chunk.length,4);
+	var auth_chunk;
+	if(typeof rcinfo.capturePass === 'string') {
+	  auth_chunk = Buffer.allocUnsafe(6 + rcinfo.capturePass.length);
+	  auth_chunk.writeUInt16BE(0x0000, 0);
+	  auth_chunk.writeUInt16BE(0x000e, 2);
+	  auth_chunk.write(rcinfo.capturePass,6, rcinfo.capturePass.length);
+	  auth_chunk.writeUInt16BE(auth_chunk.length,4);
+	}
+	else {
+	  auth_chunk = Buffer.allocUnsafe(0);
+	}
 
-	var payload_chunk = new Buffer (6 + msg.length);
+	var payload_chunk = Buffer.allocUnsafe(6 + msg.length);
 	payload_chunk.writeUInt16BE(0x0000, 0);
 	payload_chunk.writeUInt16BE(0x000f, 2);
 	payload_chunk.write(msg, 6, msg.length);
 	payload_chunk.writeUInt16BE(payload_chunk.length,4);
+
+	var extensions_chunk = Buffer.allocUnsafe(0);
+	for(var i in extensions) {
+	  for(var j in extensions[i]) {
+	    var extdef = extensions[i][j];
+	    if(typeof extdef === "object" &&
+	       typeof extdef.keyName === "string" &&
+	       typeof rcinfo[extdef.keyName] !== 'undefined') {
+		var this_chunk;
+		var data = rcinfo[extdef.keyName];
+		var failed = true;
+		if(/\d{1,}/.test(extdef.type)) {
+		  var bitLength = extdef.type.match(/\d{1,}/)[0];
+		  var size = Math.floor(bitLength/8)+6;
+		  this_chunk = Buffer.allocUnsafe(size);
+		  this_chunk.writeUInt16BE(i, 0);
+		  this_chunk.writeUInt16BE(j, 2);
+		  if(typeof this_chunk["write"+extdef.type] === 'function') {
+		    this_chunk['write'+extdef.type](data ,6);
+		    failed = false;
+		  }
+		  else if(typeof this_chunk["write"+extdef.type+"BE"] === 'function') {
+		    this_chunk['write'+extdef.type+"BE"](data ,6);
+		    failed = false;
+		  }
+		  this_chunk.writeUInt16BE(this_chunk.length,4);
+		}
+		else if(/string$/.test(extdef.type) || typeof extdef.type === undefined) {
+		  this_chunk = Buffer.allocUnsafe(6+data.length);
+		  this_chunk.writeUInt16BE(i, 0);
+		  this_chunk.writeUInt16BE(j, 2);
+		  this_chunk.write(data, 6, data.length);
+		  this_chunk.writeUInt16BE(this_chunk.length, 4);
+		  failed = false;
+		}
+		if(typeof this_chunk !== 'undefined' && !failed) {
+		  extensions_chunk = Buffer.concat([extensions_chunk, this_chunk]);
+		}
+	    }
+	  }
+	}
 
 	var hep_message, correlation_chunk;
 
 	if ((rcinfo.proto_type == 32 || rcinfo.proto_type == 35 ) && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
-	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
+	        correlation_chunk = Buffer.allocUnsafe(6 + rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(0x0000, 0);
 	        correlation_chunk.writeUInt16BE(0x0011, 2);
 	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
 
 	        tmpA = ToUint16(rcinfo.mos);
-		var mos = new Buffer (8);
+		var mos = Buffer.allocUnsafe(8);
 		mos.writeUInt16BE(0x0000, 0);
 		mos.writeUInt16BE(0x0020, 2);
 		mos.writeUInt16BE(tmpA,6);
@@ -200,7 +246,8 @@ module.exports = {
 			auth_chunk,
 			correlation_chunk,
 			mos,
-			payload_chunk
+			payload_chunk,
+			extensions_chunk
 		]);
 
 	}
@@ -208,14 +255,14 @@ module.exports = {
 	else if (rcinfo.transaction_type && rcinfo.transaction_type.length && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
-	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
+	        correlation_chunk = Buffer.allocUnsafe(6 + rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(0x0000, 0);
 	        correlation_chunk.writeUInt16BE(0x0011, 2);
 	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
 
 	        // create transaction_type chunk
-	        var transaction_type = new Buffer (6 + rcinfo.transaction_type.length);
+	        var transaction_type = Buffer.allocUnsafe(6 + rcinfo.transaction_type.length);
 	        transaction_type.writeUInt16BE(0x0000, 0);
 	        transaction_type.writeUInt16BE(0x0024, 2);
 	        transaction_type.write(rcinfo.transaction_type,6, rcinfo.transaction_type.length);
@@ -237,14 +284,15 @@ module.exports = {
 			auth_chunk,
 			correlation_chunk,
 			transaction_type,
-			payload_chunk
+			payload_chunk,
+			extensions_chunk
 		]);
 
 	}
 	else if (rcinfo.correlation_id && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
-	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
+	        correlation_chunk = Buffer.allocUnsafe(6 + rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(0x0000, 0);
 	        correlation_chunk.writeUInt16BE(0x0011, 2);
 	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
@@ -265,7 +313,8 @@ module.exports = {
 			hepnodename_chunk,
 			auth_chunk,
 			correlation_chunk,
-			payload_chunk
+			payload_chunk,
+			extensions_chunk
 		]);
 	}
 	else {
@@ -284,7 +333,8 @@ module.exports = {
 			capt_id,
 			hepnodename_chunk,
 			auth_chunk,
-			payload_chunk
+			payload_chunk,
+			extensions_chunk
 		]);
 
 	}
@@ -442,12 +492,14 @@ var hepDecode = function(data){
 	   typeof extensions[data.vendor][data.type].keyName) {
 	    returnData.rcinfo = {};
 	    var keyName = extensions[data.vendor][data.type].keyName;
-	    var decFunc = extensions[data.vendor][data.type].decFunc;
-	    if(typeof decFunc === 'string' && typeof data.chunk['read'+decFunc] === 'function') {
-	      returnData.rcinfo[keyName] = data.chunk['read'+decFunc]();
-	    }
-	    else if(typeof decFunc === 'function') {
-	      returnData.rcinfo[keyName] = decFunc(data.chunk);
+	    var type = extensions[data.vendor][data.type].type;
+	    if(typeof type === 'string') {
+	      if(typeof data.chunk['read'+type] === 'function') {
+		returnData.rcinfo[keyName] = data.chunk['read'+type]();
+	      }
+	      else if(typeof data.chunk['read'+type+"BE"] === 'function') {
+		returnData.rcinfo[keyName] = data.chunk['read'+type+"BE"]();
+	      }
 	    }
 	    else {
 	      returnData.rcinfo[keyName] = data.chunk.toString();
