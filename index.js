@@ -197,7 +197,7 @@ module.exports = {
 		  }
 		  this_chunk.writeUInt16BE(this_chunk.length,4);
 		}
-		else if(/string$/.test(extdef.type) || typeof extdef.type === undefined) {
+		else if(/string$/.test(extdef.type) || extdef.type === undefined) {
 		  this_chunk = Buffer.allocUnsafe(6+data.length);
 		  this_chunk.writeUInt16BE(i, 0);
 		  this_chunk.writeUInt16BE(j, 2);
