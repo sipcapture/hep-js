@@ -102,7 +102,7 @@ module.exports = {
 
 	var dst_ip = new Buffer (rcinfo.protocolFamily == 10 ? 22 : 10);
 	dst_ip.writeUInt16BE(0x0000, 0);
-	dst_ip.writeUInt16BE(rcinfo.protocolFamily == 10 ? 0x0006 : 0x0003);
+	dst_ip.writeUInt16BE(rcinfo.protocolFamily == 10 ? 0x0006 : 0x0004);
 	inet_pton(rcinfo.dstIp).copy(dst_ip, 6);
 	dst_ip.writeUInt16BE(dst_ip.length,4);
 	console.log("BUFFER JSON DST", dst_ip.toJSON());
