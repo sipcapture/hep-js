@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2015 Lorenzo Mangani (SIPCAPTURE.ORG)
  * Copyright (C) 2015 Alexandr Dubovikov (SIPCAPTURE.ORG)
- * Copyright (C) 2019 QXIP BV (QXIP.NET)
+ * Copyright (C) 2015 QXIP BV (QXIP.NET)
  *
  * Project Homepage: http://github.com/sipcapture
  *
@@ -28,7 +28,6 @@ var debug = false;
 // Module import
 var Parser = require("binary-parser").Parser;
 var mixinDeep = require('mixin-deep');
-var extensions = {};
 
 module.exports = {
   /**
@@ -70,161 +69,108 @@ module.exports = {
    */
   encapsulate: function(msg,rcinfo) {
 	if (debug) console.log('Sending HEP3 Packet...');
-	var header = Buffer.allocUnsafe(6);
+	var payload_message = new Buffer(msg);
+	var header = new Buffer (6);
 	header.write ("HEP3");
 
-	var ip_family = Buffer.allocUnsafe(7);
+	var ip_family = new Buffer (7);
 	ip_family.writeUInt16BE(0x0000, 0);
 	ip_family.writeUInt16BE(0x0001,2);
 	ip_family.writeUInt8(rcinfo.protocolFamily,6);
 	ip_family.writeUInt16BE(ip_family.length,4);
 
-	var ip_proto = Buffer.allocUnsafe(7);
+	var ip_proto = new Buffer (7);
 	ip_proto.writeUInt16BE(0x0000, 0);
 	ip_proto.writeUInt16BE(0x0002, 2);
 	ip_proto.writeUInt8(rcinfo.protocol,6);
 	ip_proto.writeUInt16BE(ip_proto.length,4);
 
 	/*ip*/
-	var d = rcinfo.srcIp ? rcinfo.srcIp.split('.') : ['127','0','0','1'];
-	var tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
+	
+	//var d = rcinfo.srcIp.split('.');
+	//var tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
 
-	var src_ip4 = Buffer.allocUnsafe(10);
-	src_ip4.writeUInt16BE(0x0000, 0);
-	src_ip4.writeUInt16BE(0x0003, 2);
-	src_ip4.writeUInt32BE(tmpip,6);
-	src_ip4.writeUInt16BE(src_ip4.length,4);
+	var src_ip = new Buffer (rcinfo.protocolFamily == 10 ? 22 : 10);
+	src_ip.writeUInt16BE(0x0000, 0);
+	src_ip.writeUInt16BE(rcinfo.ip_family == 10 ? 0x0005 : 0x0003);
+	inet_pton(rcinfo.srcIp).copy(src_ip, 6);
+	src_ip.writeUInt16BE(src_ip.length,4);
+	
+	//d = rcinfo.dstIp.split('.');
+	//tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
 
-	d = rcinfo.dstIp ? rcinfo.dstIp.split('.') : ['127','0','0','1'];
-	tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
+	var dst_ip = new Buffer (rcinfo.protocolFamily == 10 ? 22 : 10);
+	dst_ip.writeUInt16BE(0x0000, 0);
+	dst_ip.writeUInt16BE(rcinfo.ip_family == 10 ? 0x0005 : 0x0003);
+	inet_pton(rcinfo.srcIp).copy(dst_ip, 6);
+	dst_ip.writeUInt16BE(dst_ip.length,4);
 
-	var dst_ip4 = Buffer.allocUnsafe(10);
-	dst_ip4.writeUInt16BE(0x0000, 0);
-	dst_ip4.writeUInt16BE(0x0004, 2);
-	dst_ip4.writeUInt32BE(tmpip,6);
-	dst_ip4.writeUInt16BE(dst_ip4.length,4);
-
-	var src_port = Buffer.allocUnsafe(8);
-	var tmpA = rcinfo.srcPort ? parseInt(rcinfo.srcPort,10) : 0;
+	var src_port = new Buffer (8);
+	var tmpA = parseInt(rcinfo.srcPort,10);
 	src_port.writeUInt16BE(0x0000, 0);
 	src_port.writeUInt16BE(0x0007, 2);
 	src_port.writeUInt16BE(tmpA,6);
 	src_port.writeUInt16BE(src_port.length,4);
 
-	var dst_port = Buffer.allocUnsafe(8);
-	tmpA = rcinfo.dstPort ? parseInt(rcinfo.dstPort, 10) : 0;
+	var dst_port = new Buffer (8);
+	tmpA = parseInt(rcinfo.dstPort, 10);
 	dst_port.writeUInt16BE(0x0000, 0);
 	dst_port.writeUInt16BE(0x0008, 2);
 	dst_port.writeUInt16BE(tmpA,6);
 	dst_port.writeUInt16BE(dst_port.length,4);
 
-	tmpA = ToUint32(rcinfo.timeSeconds);
-	var time_sec = Buffer.allocUnsafe(10);
+	tmpA = ToUint32(rcinfo.time_sec);
+	var time_sec = new Buffer (10);
 	time_sec.writeUInt16BE(0x0000, 0);
 	time_sec.writeUInt16BE(0x0009, 2);
 	time_sec.writeUInt32BE(tmpA,6);
 	time_sec.writeUInt16BE(time_sec.length,4);
 
-	tmpA = ToUint32(rcinfo.timeUseconds);
-	var time_usec = Buffer.allocUnsafe(10);
+	tmpA = ToUint32(rcinfo.time_usec);
+	var time_usec = new Buffer (10);
 	time_usec.writeUInt16BE(0x0000, 0);
 	time_usec.writeUInt16BE(0x000a, 2);
 	time_usec.writeUInt32BE(tmpA,6);
 	time_usec.writeUInt16BE(time_usec.length,4);
 
-	var proto_type = Buffer.allocUnsafe(7);
+	var proto_type = new Buffer (7);
 	proto_type.writeUInt16BE(0x0000, 0);
 	proto_type.writeUInt16BE(0x000b,2);
-	proto_type.writeUInt8(rcinfo.payloadType,6);
+	proto_type.writeUInt8(rcinfo.proto_type,6);
 	proto_type.writeUInt16BE(proto_type.length,4);
 
 	tmpA = ToUint32(rcinfo.captureId);
-	var capt_id = Buffer.allocUnsafe(10);
+	var capt_id = new Buffer (10);
 	capt_id.writeUInt16BE(0x0000, 0);
 	capt_id.writeUInt16BE(0x000c, 2);
 	capt_id.writeUInt32BE(tmpA,6);
 	capt_id.writeUInt16BE(capt_id.length,4);
-	  
-	// HEPNodeName w/ Fallback to HEP Capture ID
-	tmpA = rcinfo.hepNodeName ? rcinfo.hepNodeName : "" + rcinfo.captureId;
-	var hepnodename_chunk = Buffer.allocUnsafe(6 + tmpA.length);
-	hepnodename_chunk.writeUInt16BE(0x0000, 0);
-	hepnodename_chunk.writeUInt16BE(0x0013, 2);
-	hepnodename_chunk.write(tmpA,6, tmpA.length);
-	hepnodename_chunk.writeUInt16BE(hepnodename_chunk.length,4);
 
-	var auth_chunk;
-	if(typeof rcinfo.capturePass === 'string') {
-	  auth_chunk = Buffer.allocUnsafe(6 + rcinfo.capturePass.length);
-	  auth_chunk.writeUInt16BE(0x0000, 0);
-	  auth_chunk.writeUInt16BE(0x000e, 2);
-	  auth_chunk.write(rcinfo.capturePass,6, rcinfo.capturePass.length);
-	  auth_chunk.writeUInt16BE(auth_chunk.length,4);
-	}
-	else {
-	  auth_chunk = Buffer.allocUnsafe(0);
-	}
+	var auth_chunk = new Buffer (6 + rcinfo.capturePass.length);
+	auth_chunk.writeUInt16BE(0x0000, 0);
+	auth_chunk.writeUInt16BE(0x000e, 2);
+	auth_chunk.write(rcinfo.capturePass,6, rcinfo.capturePass.length);
+	auth_chunk.writeUInt16BE(auth_chunk.length,4);
 
-	var payload_chunk = Buffer.allocUnsafe(6 + msg.length);
+	var payload_chunk = new Buffer (6 + msg.length);
 	payload_chunk.writeUInt16BE(0x0000, 0);
 	payload_chunk.writeUInt16BE(0x000f, 2);
 	payload_chunk.write(msg, 6, msg.length);
 	payload_chunk.writeUInt16BE(payload_chunk.length,4);
 
-	var extensions_chunk = Buffer.allocUnsafe(0);
-	for(var i in extensions) {
-	  for(var j in extensions[i]) {
-	    var extdef = extensions[i][j];
-	    if(typeof extdef === "object" &&
-	       typeof extdef.keyName === "string" &&
-	       typeof rcinfo[extdef.keyName] !== 'undefined') {
-		var this_chunk;
-		var data = rcinfo[extdef.keyName];
-		var failed = true;
-		if(/\d{1,}/.test(extdef.type)) {
-		  var bitLength = extdef.type.match(/\d{1,}/)[0];
-		  var size = Math.floor(bitLength/8)+6;
-		  this_chunk = Buffer.allocUnsafe(size);
-		  this_chunk.writeUInt16BE(i, 0);
-		  this_chunk.writeUInt16BE(j, 2);
-		  if(typeof this_chunk["write"+extdef.type] === 'function') {
-		    this_chunk['write'+extdef.type](data ,6);
-		    failed = false;
-		  }
-		  else if(typeof this_chunk["write"+extdef.type+"BE"] === 'function') {
-		    this_chunk['write'+extdef.type+"BE"](data ,6);
-		    failed = false;
-		  }
-		  this_chunk.writeUInt16BE(this_chunk.length,4);
-		}
-		else if(/string$/.test(extdef.type) || extdef.type === undefined) {
-		  this_chunk = Buffer.allocUnsafe(6+data.length);
-		  this_chunk.writeUInt16BE(i, 0);
-		  this_chunk.writeUInt16BE(j, 2);
-		  this_chunk.write(data, 6, data.length);
-		  this_chunk.writeUInt16BE(this_chunk.length, 4);
-		  failed = false;
-		}
-		if(typeof this_chunk !== 'undefined' && !failed) {
-		  extensions_chunk = Buffer.concat([extensions_chunk, this_chunk]);
-		}
-	    }
-	  }
-	}
-
 	var hep_message, correlation_chunk;
 
-	if ((rcinfo.proto_type == 32 || rcinfo.proto_type == 35 ) && rcinfo.correlation_id.length) {
+	if ((rcinfo.proto_type == 32 || rcinfo.proto_type == 35) && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
-	        correlation_chunk = Buffer.allocUnsafe(6 + rcinfo.correlation_id.length);
+	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(0x0000, 0);
 	        correlation_chunk.writeUInt16BE(0x0011, 2);
 	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
 
 	        tmpA = ToUint16(rcinfo.mos);
-		var mos = Buffer.allocUnsafe(8);
+		var mos = new Buffer (8);
 		mos.writeUInt16BE(0x0000, 0);
 		mos.writeUInt16BE(0x0020, 2);
 		mos.writeUInt16BE(tmpA,6);
@@ -234,20 +180,17 @@ module.exports = {
 			header, 
 			ip_family,
 			ip_proto,
-			src_ip4,
-			dst_ip4,
+			src_ip,
+			dst_ip,
 			src_port,
 			dst_port,
 			time_sec,
 			time_usec,
 			proto_type,
 			capt_id,
-			hepnodename_chunk,
 			auth_chunk,
 			correlation_chunk,
-			mos,
-			payload_chunk,
-			extensions_chunk
+			mos
 		]);
 
 	}
@@ -255,14 +198,14 @@ module.exports = {
 	else if (rcinfo.transaction_type && rcinfo.transaction_type.length && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
-	        correlation_chunk = Buffer.allocUnsafe(6 + rcinfo.correlation_id.length);
+	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(0x0000, 0);
 	        correlation_chunk.writeUInt16BE(0x0011, 2);
 	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
 
 	        // create transaction_type chunk
-	        var transaction_type = Buffer.allocUnsafe(6 + rcinfo.transaction_type.length);
+	        var transaction_type = new Buffer (6 + rcinfo.transaction_type.length);
 	        transaction_type.writeUInt16BE(0x0000, 0);
 	        transaction_type.writeUInt16BE(0x0024, 2);
 	        transaction_type.write(rcinfo.transaction_type,6, rcinfo.transaction_type.length);
@@ -272,27 +215,25 @@ module.exports = {
 			header, 
 			ip_family,
 			ip_proto,
-			src_ip4,
-			dst_ip4,
+			src_ip,
+			dst_ip,
 			src_port,
 			dst_port,
 			time_sec,
 			time_usec,
 			proto_type,
 			capt_id,
-			hepnodename_chunk,
 			auth_chunk,
 			correlation_chunk,
 			transaction_type,
-			payload_chunk,
-			extensions_chunk
+			payload_chunk
 		]);
 
 	}
 	else if (rcinfo.correlation_id && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
-	        correlation_chunk = Buffer.allocUnsafe(6 + rcinfo.correlation_id.length);
+	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(0x0000, 0);
 	        correlation_chunk.writeUInt16BE(0x0011, 2);
 	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
@@ -302,19 +243,17 @@ module.exports = {
 			header, 
 			ip_family,
 			ip_proto,
-			src_ip4,
-			dst_ip4,
+			src_ip,
+			dst_ip,
 			src_port,
 			dst_port,
 			time_sec,
 			time_usec,
 			proto_type,
 			capt_id,
-			hepnodename_chunk,
 			auth_chunk,
 			correlation_chunk,
-			payload_chunk,
-			extensions_chunk
+			payload_chunk
 		]);
 	}
 	else {
@@ -323,18 +262,16 @@ module.exports = {
 			header,
 			ip_family,
 			ip_proto,
-			src_ip4,
-			dst_ip4,
+			src_ip,
+			dst_ip,
 			src_port,
 			dst_port,
 			time_sec,
 			time_usec,
 			proto_type,
 			capt_id,
-			hepnodename_chunk,
 			auth_chunk,
-			payload_chunk,
-			extensions_chunk
+			payload_chunk
 		]);
 
 	}
@@ -351,10 +288,6 @@ module.exports = {
   decode: function(hep) {
     return String(hep)
       .toString('utf8');
-  },
-
-  addVendorExtensions: function(json) {
-    extensions = mixinDeep(extensions, json);
   }
 };
 
@@ -385,49 +318,93 @@ var ntohl = function (val) {
            | ((val >> 24) & 0xFF);
 };
 
-var inet_pton = function inet_pton(a) {
+var assert = exports.assert = function(condition, message) {
 
-  var r, m, x, i, j, f = String.fromCharCode;
-  // IPv4
-  m = a.match(/^(?:\d{1,3}(?:\.|$)){4}/);
-  if (m) {
-    m = m[0].split('.');
-    m = f(m[0]) + f(m[1]) + f(m[2]) + f(m[3]);
-    // Return if 4 bytes, otherwise false.
-    return m.length === 4 ? m : false;
-  }
-  r = /^((?:[\da-f]{1,4}(?::|)){0,8})(::)?((?:[\da-f]{1,4}(?::|)){0,8})$/;
-  // IPv6
-  m = a.match(r);
-  if (m) {
-    // Translate each hexadecimal value.
-    for (j = 1; j < 4; j++) {
-      // Indice 2 is :: and if no length, continue.
-      if (j === 2 || m[j].length === 0) {
-        continue;
-      }
-      m[j] = m[j].split(':');
-      for (i = 0; i < m[j].length; i++) {
-        m[j][i] = parseInt(m[j][i], 16);
-        // Would be NaN if it was blank, return false.
-        if (isNaN(m[j][i])) {
-          // Invalid IP.
-          return false;
+    if (!condition) {
+        console.log("ERROR", message);
+        throw new Error(message || "Assertion failed");
+    }
+};
+
+// Very simple inet_pton(3) equivalent.
+var inet_pton = function inet_pton(str) {
+
+    // IPv4-mapped IPv6.
+    if (str.slice(0, 7) === "::ffff:") {
+        str = str.slice(7);
+    }
+
+    // IPv4.
+    if (str.indexOf(":") === -1) {
+
+        var buf = new Buffer(4);
+        buf.fill(0);
+
+        var octets = str.split(/\./g).map(function(o) {
+            assert(/^\d+$/.test(o), "Bad octet");
+            return parseInt(o, 10);
+        });
+        // Support short form from inet_aton(3) man page.
+        octets.forEach(function(octet) {
+            assert(octet >= 0, "Bad IPv4 address");
+            assert(octet <= 255, "Bad IPv4 address");
+        });
+        if (octets.length === 2) {
+            buf[0] = octets[0];
+            buf[3] = octets[1];
+        } else if (octets.length === 3) {
+            buf[0] = octets[0];
+            buf[1] = octets[1];
+            buf[3] = octets[2];
+        } else if (octets.length === 4) {
+            buf[0] = octets[0];
+            buf[1] = octets[1];
+            buf[2] = octets[2];
+            buf[3] = octets[3];
+        } else {
+            throw new Error("Bad IPv4 address");
         }
-        m[j][i] = f(m[j][i] >> 8) + f(m[j][i] & 0xFF);
-      }
-      m[j] = m[j].join('');
+
+        return buf;
+        // IPv6.
+        // IPv6.
+    } else {
+        var buf = new Buffer(16);
+        buf.fill(0);
+        var dgroups = str.split(/::/g);
+        // Check against 1::1::1
+        assert(dgroups.length <= 2, "Bad IPv6 address");
+        var groups = [];
+        var i;
+        if (dgroups[0]) {
+            groups.push.apply(groups, dgroups[0].split(/:/g));
+        }
+        if (dgroups.length === 2) {
+            if (dgroups[1]) {
+                var splitted = dgroups[1].split(/:/g);
+                var fill = 8 - (groups.length + splitted.length);
+                // Check against 1:1:1:1::1:1:1:1
+                assert(fill > 0, "Bad IPv6 address");
+                for (i = 0; i < fill; i++) {
+                    groups.push(0);
+                }
+                groups.push.apply(groups, splitted);
+            } else {
+                // Check against 1:1:1:1:1:1:1:1::
+                assert(groups.length <= 7, "Bad IPv6 address");
+            }
+        } else {
+            // Check against 1:1:1
+            assert(groups.length === 8, "Bad IPv6 address");
+        }
+        for (i = 0; i < Math.min(groups.length, 8); i++) {
+            // Check against parseInt("127.0.0.1", 16) -> 295
+            assert(/^[0-9a-f]+$/.test(groups[i]), "Bad group");
+            buf.writeUInt16BE(parseInt(groups[i], 16), i * 2);
+        }
+
+        return buf;
     }
-    x = m[1].length + m[3].length;
-    if (x === 16) {
-      return m[1] + m[3];
-    } else if (x < 16 && m[2].length > 0) {
-      return m[1] + (new Array(16 - x + 1))
-        .join('\x00') + m[3];
-    }
-  }
-  // Invalid IP.
-  return false;
 };
 
 // Build an IP packet header Parser
@@ -435,14 +412,14 @@ var hepHeader = new Parser()
   .endianess("big")
   .string("hep", { length: 4, stripNull: true, assert: "HEP3" })
   .uint16("hepLength")
-  .buffer("payload", { length: function () {return this.hepLength - 6; } }); // Length of HepMessage is defined including the 6 Byte Header
+  .buffer("payload", { length: "hepLength" });
 
 var hepParse = new Parser()
   .endianess("big")
   .uint16("vendor")
   .uint16("type")
   .uint16("length")
-  .buffer("chunk", { length: function () {return this.length-6;} }); // Length of Chunk is defined including the 6 Byte header
+  .buffer("chunk", { length: "length" });
 
 var hepIps = new Parser()
   .endianess("big")
@@ -474,38 +451,17 @@ var hepDecode = function(data){
     case 12:
 	return { rcinfo: { captureId: data.chunk.readUInt32BE() } };
     case 14:
-	return { rcinfo: { capturePass: data.chunk.toString() } };
+	return { rcinfo: { capturePass: data.chunk.slice(0,data.chunk.length-6).toString() } };
     case 15:
 	return { payload: data.chunk.toString() };
     case 17:
-        return { rcinfo: { correlation_id: data.chunk.toString() } };
-    case 19:
-	return { rcinfo: { hepNodeName: data.chunk.toString() } };
+        return { rcinfo: { correlation_id: data.chunk.slice(0,data.chunk.length-6).toString() } };
     case 32:
 	return { rcinfo: { mos: data.chunk.readUInt16BE() } };
     case 36:
 	return { rcinfo: { transaction_type: data.chunk.readUInt16BE() } };
     default:
-	var returnData = {};
-	if(typeof extensions[data.vendor] === 'object' &&
-	   typeof extensions[data.vendor][data.type] === 'object' &&
-	   typeof extensions[data.vendor][data.type].keyName) {
-	    returnData.rcinfo = {};
-	    var keyName = extensions[data.vendor][data.type].keyName;
-	    var type = extensions[data.vendor][data.type].type;
-	    if(typeof type === 'string') {
-	      if(typeof data.chunk['read'+type] === 'function') {
-		returnData.rcinfo[keyName] = data.chunk['read'+type]();
-	      }
-	      else if(typeof data.chunk['read'+type+"BE"] === 'function') {
-		returnData.rcinfo[keyName] = data.chunk['read'+type+"BE"]();
-	      }
-	    }
-	    else {
-	      returnData.rcinfo[keyName] = data.chunk.toString();
-	    }
-	}
-	return returnData;
+	return {};
   }
 };
 
@@ -541,7 +497,6 @@ var hepPacket = {
          "timestamp": "2015-06-11T12:36:08:222Z",
          "timestampUSecs": 0,
          "captureId": 241,
-	 "hepNodeName": "ams01-voip",
          "capturePass": "myHep",
          "payload_type": "SIP"
        },
@@ -550,4 +505,4 @@ var hepPacket = {
        }
    };
 
-*/
+*/ 
