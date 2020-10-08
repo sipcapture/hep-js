@@ -73,13 +73,13 @@ module.exports = {
 	var header = new Buffer (6);
 	header.write ("HEP3");
 
-	var ip_family = new Buffer (7);
+	var ip_family = Buffer.allocUnsafe (7);
 	ip_family.writeUInt16BE(0x0000, 0);
 	ip_family.writeUInt16BE(0x0001,2);
 	ip_family.writeUInt8(rcinfo.ip_family,6);
 	ip_family.writeUInt16BE(ip_family.length,4);
 
-	var ip_proto = new Buffer (7);
+	var ip_proto = Buffer.allocUnsafe (7);
 	ip_proto.writeUInt16BE(0x0000, 0);
 	ip_proto.writeUInt16BE(0x0002, 2);
 	ip_proto.writeUInt8(rcinfo.protocol,6);
@@ -90,31 +90,31 @@ module.exports = {
 	//var d = rcinfo.srcIp.split('.');
 	//var tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
 
-	var src_ip = new Buffer (rcinfo.ip_family == 10 ? 22 : 10);
+	var src_ip = Buffer.allocUnsafe (rcinfo.ip_family == 10 ? 22 : 10);
 	src_ip.writeUInt16BE(0x0000, 0);
 	src_ip.writeUInt16BE(rcinfo.ip_family == 10 ? 0x0005 : 0x0003, 2);
 	inet_pton(rcinfo.srcIp).copy(src_ip, 6);
 	src_ip.writeUInt16BE(src_ip.length,4);
-	console.log("BUFFER JSON SRC", src_ip.toJSON());
+	//console.log("BUFFER JSON SRC", src_ip.toJSON());
 	
 	//d = rcinfo.dstIp.split('.');
 	//tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
 
-	var dst_ip = new Buffer (rcinfo.protocolFamily == 10 ? 22 : 10);
+	var dst_ip = Buffer.allocUnsafe (rcinfo.ip_family == 10 ? 22 : 10);
 	dst_ip.writeUInt16BE(0x0000, 0);
-	dst_ip.writeUInt16BE(rcinfo.protocolFamily == 10 ? 0x0006 : 0x0004, 2);
+	dst_ip.writeUInt16BE(rcinfo.ip_family == 10 ? 0x0006 : 0x0004, 2);
 	inet_pton(rcinfo.dstIp).copy(dst_ip, 6);
 	dst_ip.writeUInt16BE(dst_ip.length,4);
-	console.log("BUFFER JSON DST", dst_ip.toJSON());
+	//console.log("BUFFER JSON DST", dst_ip.toJSON());
 
-	var src_port = new Buffer (8);
+	var src_port = Buffer.allocUnsafe (8);
 	var tmpA = parseInt(rcinfo.srcPort,10);
 	src_port.writeUInt16BE(0x0000, 0);
 	src_port.writeUInt16BE(0x0007, 2);
 	src_port.writeUInt16BE(tmpA,6);
 	src_port.writeUInt16BE(src_port.length,4);
 
-	var dst_port = new Buffer (8);
+	var dst_port = Buffer.allocUnsafe (8);
 	tmpA = parseInt(rcinfo.dstPort, 10);
 	dst_port.writeUInt16BE(0x0000, 0);
 	dst_port.writeUInt16BE(0x0008, 2);
@@ -122,39 +122,39 @@ module.exports = {
 	dst_port.writeUInt16BE(dst_port.length,4);
 
 	tmpA = ToUint32(rcinfo.time_sec);
-	var time_sec = new Buffer (10);
+	var time_sec = Buffer.allocUnsafe (10);
 	time_sec.writeUInt16BE(0x0000, 0);
 	time_sec.writeUInt16BE(0x0009, 2);
 	time_sec.writeUInt32BE(tmpA,6);
 	time_sec.writeUInt16BE(time_sec.length,4);
 
 	tmpA = ToUint32(rcinfo.time_usec);
-	var time_usec = new Buffer (10);
+	var time_usec = Buffer.allocUnsafe (10);
 	time_usec.writeUInt16BE(0x0000, 0);
 	time_usec.writeUInt16BE(0x000a, 2);
 	time_usec.writeUInt32BE(tmpA,6);
 	time_usec.writeUInt16BE(time_usec.length,4);
 
-	var proto_type = new Buffer (7);
+	var proto_type = Buffer.allocUnsafe (7);
 	proto_type.writeUInt16BE(0x0000, 0);
 	proto_type.writeUInt16BE(0x000b,2);
 	proto_type.writeUInt8(rcinfo.proto_type,6);
 	proto_type.writeUInt16BE(proto_type.length,4);
 
 	tmpA = ToUint32(rcinfo.captureId);
-	var capt_id = new Buffer (10);
+	var capt_id = Buffer.allocUnsafe (10);
 	capt_id.writeUInt16BE(0x0000, 0);
 	capt_id.writeUInt16BE(0x000c, 2);
 	capt_id.writeUInt32BE(tmpA,6);
 	capt_id.writeUInt16BE(capt_id.length,4);
 
-	var auth_chunk = new Buffer (6 + rcinfo.capturePass.length);
+	var auth_chunk = Buffer.allocUnsafe (6 + rcinfo.capturePass.length);
 	auth_chunk.writeUInt16BE(0x0000, 0);
 	auth_chunk.writeUInt16BE(0x000e, 2);
 	auth_chunk.write(rcinfo.capturePass,6, rcinfo.capturePass.length);
 	auth_chunk.writeUInt16BE(auth_chunk.length,4);
 
-	var payload_chunk = new Buffer (6 + msg.length);
+	var payload_chunk = Buffer.allocUnsafe (6 + msg.length);
 	payload_chunk.writeUInt16BE(0x0000, 0);
 	payload_chunk.writeUInt16BE(0x000f, 2);
 	payload_chunk.write(msg, 6, msg.length);
@@ -165,14 +165,14 @@ module.exports = {
 	if ((rcinfo.proto_type == 32 || rcinfo.proto_type == 35) && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
-	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
+	        correlation_chunk = Buffer.allocUnsafe (6 + rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(0x0000, 0);
 	        correlation_chunk.writeUInt16BE(0x0011, 2);
 	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
 
 	        tmpA = ToUint16(rcinfo.mos);
-		var mos = new Buffer (8);
+		var mos = Buffer.allocUnsafe (8);
 		mos.writeUInt16BE(0x0000, 0);
 		mos.writeUInt16BE(0x0020, 2);
 		mos.writeUInt16BE(tmpA,6);
@@ -200,14 +200,14 @@ module.exports = {
 	else if (rcinfo.transaction_type && rcinfo.transaction_type.length && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
-	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
+	        correlation_chunk = Buffer.allocUnsafe (6 + rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(0x0000, 0);
 	        correlation_chunk.writeUInt16BE(0x0011, 2);
 	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
 
 	        // create transaction_type chunk
-	        var transaction_type = new Buffer (6 + rcinfo.transaction_type.length);
+	        var transaction_type = Buffer.allocUnsafe (6 + rcinfo.transaction_type.length);
 	        transaction_type.writeUInt16BE(0x0000, 0);
 	        transaction_type.writeUInt16BE(0x0024, 2);
 	        transaction_type.write(rcinfo.transaction_type,6, rcinfo.transaction_type.length);
@@ -235,7 +235,7 @@ module.exports = {
 	else if (rcinfo.correlation_id && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
-	        correlation_chunk = new Buffer (6 + rcinfo.correlation_id.length);
+	        correlation_chunk = Buffer.allocUnsafe (6 + rcinfo.correlation_id.length);
 	        correlation_chunk.writeUInt16BE(0x0000, 0);
 	        correlation_chunk.writeUInt16BE(0x0011, 2);
 	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
@@ -334,7 +334,7 @@ var inet_pton = function inet_pton(str) {
     // IPv4.
     if (str.indexOf(":") === -1) {
 
-        var buf = new Buffer(4);
+        var buf = Buffer.allocUnsafe(4);
         buf.fill(0);
 
         var octets = str.split(/\./g).map(function(o) {
@@ -366,7 +366,7 @@ var inet_pton = function inet_pton(str) {
         // IPv6.
         // IPv6.
     } else {
-        var buf = new Buffer(16);
+        var buf = Buffer.allocUnsafe(16);
         buf.fill(0);
         var dgroups = str.split(/::/g);
         // Check against 1::1::1
