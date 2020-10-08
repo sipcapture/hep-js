@@ -76,7 +76,7 @@ module.exports = {
 	var ip_family = new Buffer (7);
 	ip_family.writeUInt16BE(0x0000, 0);
 	ip_family.writeUInt16BE(0x0001,2);
-	ip_family.writeUInt8(rcinfo.protocolFamily,6);
+	ip_family.writeUInt8(rcinfo.ip_family,6);
 	ip_family.writeUInt16BE(ip_family.length,4);
 
 	var ip_proto = new Buffer (7);
@@ -90,9 +90,9 @@ module.exports = {
 	//var d = rcinfo.srcIp.split('.');
 	//var tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
 
-	var src_ip = new Buffer (rcinfo.protocolFamily == 10 ? 22 : 10);
+	var src_ip = new Buffer (rcinfo.ip_family == 10 ? 22 : 10);
 	src_ip.writeUInt16BE(0x0000, 0);
-	src_ip.writeUInt16BE(rcinfo.protocolFamily == 10 ? 0x0005 : 0x0003);
+	src_ip.writeUInt16BE(rcinfo.ip_family == 10 ? 0x0005 : 0x0003, 2);
 	inet_pton(rcinfo.srcIp).copy(src_ip, 6);
 	src_ip.writeUInt16BE(src_ip.length,4);
 	console.log("BUFFER JSON SRC", src_ip.toJSON());
@@ -102,7 +102,7 @@ module.exports = {
 
 	var dst_ip = new Buffer (rcinfo.protocolFamily == 10 ? 22 : 10);
 	dst_ip.writeUInt16BE(0x0000, 0);
-	dst_ip.writeUInt16BE(rcinfo.protocolFamily == 10 ? 0x0006 : 0x0004);
+	dst_ip.writeUInt16BE(rcinfo.protocolFamily == 10 ? 0x0006 : 0x0004, 2);
 	inet_pton(rcinfo.dstIp).copy(dst_ip, 6);
 	dst_ip.writeUInt16BE(dst_ip.length,4);
 	console.log("BUFFER JSON DST", dst_ip.toJSON());
