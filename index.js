@@ -330,12 +330,7 @@ var assert = exports.assert = function(condition, message) {
 
 // Very simple inet_pton(3) equivalent.
 var inet_pton = function inet_pton(str) {
-
-    // IPv4-mapped IPv6.
-    if (str.slice(0, 7) === "::ffff:") {
-        str = str.slice(7);
-    }
-
+	
     // IPv4.
     if (str.indexOf(":") === -1) {
 
