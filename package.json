@@ -2,7 +2,7 @@
   "name": "hep-js",
   "version": "1.0.20",
   "description": "HEP3 Library for Node.JS",
-  "main": "index.js",
+  "main": "test.js",
   "scripts": {
     "test": "make test"
   },
@@ -36,7 +36,8 @@
     "chai": "~3.0.0"
   },
   "dependencies": {
-    "binary-parser": "^1.3.2",
-    "mixin-deep": "^2.0.0"
+    "binary-parser": "^2.1.1",
+    "mixin-deep": "^2.0.1",
+    "ipaddr.js": "1.5.3"
   }
 }
