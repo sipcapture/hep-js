@@ -23,14 +23,14 @@
  *
  **/
 
-var debug = false;
+const debug = false;
 
 // Module import
-var Parser = require("binary-parser").Parser;
-var mixinDeep = require("mixin-deep");
+const Parser = require("binary-parser").Parser;
+const mixinDeep = require("mixin-deep");
 const assert = require("assert");
-var ipaddr = require("ipaddr.js");
-var extensions = {};
+const ipaddr = require("ipaddr.js");
+let extensions = {};
 
 module.exports = {
 	/**
@@ -42,15 +42,15 @@ module.exports = {
 	decapsulate: function (message) {
 		if (debug) console.log('Decoding HEP3 Packet...');
 		try {
-			var HEP = hepHeader.parse(message);
+			let HEP = hepHeader.parse(message);
 			if (HEP.payload && HEP.payload.length > 0) {
-				var data = HEP.payload;
-				var tot = 0;
-				var decoded = {};
-				var PAYLOAD;
+				let data = HEP.payload;
+				let tot = 0;
+				let decoded = {};
+				let PAYLOAD;
 				while (true) {
 					PAYLOAD = hepParse.parse(data.subarray(tot));
-					var tmp = hepDecode(PAYLOAD);
+					let tmp = hepDecode(PAYLOAD);
 					decoded = mixinDeep(decoded, tmp);
 					tot += PAYLOAD.length;
 					if (tot >= HEP.payload.length) { break; }
@@ -72,43 +72,43 @@ module.exports = {
 	 */
 	encapsulate: function (msg, rcinfo) {
 		if (debug) console.log('Sending HEP3 Packet...');
-		var header = Buffer.allocUnsafe(6);
+		let header = Buffer.allocUnsafe(6);
 		header.write("HEP3");
 
-		var ip_family = Buffer.allocUnsafe(7);
+		let ip_family = Buffer.allocUnsafe(7);
 		ip_family.writeUInt16BE(0x0000, 0);
 		ip_family.writeUInt16BE(0x0001, 2);
 		ip_family.writeUInt8(rcinfo.protocolFamily, 6);
 		ip_family.writeUInt16BE(ip_family.length, 4);
 
-		var ip_proto = Buffer.allocUnsafe(7);
+		let ip_proto = Buffer.allocUnsafe(7);
 		ip_proto.writeUInt16BE(0x0000, 0);
 		ip_proto.writeUInt16BE(0x0002, 2);
 		ip_proto.writeUInt8(rcinfo.protocol, 6);
 		ip_proto.writeUInt16BE(ip_proto.length, 4);
 
 		/*ip*/
-		var src_ip = Buffer.allocUnsafe(rcinfo.protocolFamily == 10 ? 22 : 10);
+		let src_ip = Buffer.allocUnsafe(rcinfo.protocolFamily == 10 ? 22 : 10);
 		src_ip.writeUInt16BE(0x0000, 0);
 		src_ip.writeUInt16BE(rcinfo.protocolFamily == 10 ? 0x0005 : 0x0003, 2);
 		inet_pton(rcinfo.srcIp).copy(src_ip, 6);
 		src_ip.writeUInt16BE(src_ip.length, 4);
 
-		var dst_ip = Buffer.allocUnsafe(rcinfo.protocolFamily == 10 ? 22 : 10);
+		let dst_ip = Buffer.allocUnsafe(rcinfo.protocolFamily == 10 ? 22 : 10);
 		dst_ip.writeUInt16BE(0x0000, 0);
 		dst_ip.writeUInt16BE(rcinfo.protocolFamily == 10 ? 0x0006 : 0x0004, 2);
 		inet_pton(rcinfo.dstIp).copy(dst_ip, 6);
 		dst_ip.writeUInt16BE(dst_ip.length, 4);
 
 		/*port*/
-		var src_port = Buffer.allocUnsafe(8);
-		var tmpA = rcinfo.srcPort ? parseInt(rcinfo.srcPort, 10) : 0;
+		let src_port = Buffer.allocUnsafe(8);
+		let tmpA = rcinfo.srcPort ? parseInt(rcinfo.srcPort, 10) : 0;
 		src_port.writeUInt16BE(0x0000, 0);
 		src_port.writeUInt16BE(0x0007, 2);
 		src_port.writeUInt16BE(tmpA, 6);
 		src_port.writeUInt16BE(src_port.length, 4);
 
-		var dst_port = Buffer.allocUnsafe(8);
+		let dst_port = Buffer.allocUnsafe(8);
 		tmpA = rcinfo.dstPort ? parseInt(rcinfo.dstPort, 10) : 0;
 		dst_port.writeUInt16BE(0x0000, 0);
 		dst_port.writeUInt16BE(0x0008, 2);
@@ -116,27 +116,27 @@ module.exports = {
 		dst_port.writeUInt16BE(dst_port.length, 4);
 
 		tmpA = ToUint32(rcinfo.timeSeconds);
-		var time_sec = Buffer.allocUnsafe(10);
+		let time_sec = Buffer.allocUnsafe(10);
 		time_sec.writeUInt16BE(0x0000, 0);
 		time_sec.writeUInt16BE(0x0009, 2);
 		time_sec.writeUInt32BE(tmpA, 6);
 		time_sec.writeUInt16BE(time_sec.length, 4);
 
 		tmpA = ToUint32(rcinfo.timeUseconds);
-		var time_usec = Buffer.allocUnsafe(10);
+		let time_usec = Buffer.allocUnsafe(10);
 		time_usec.writeUInt16BE(0x0000, 0);
 		time_usec.writeUInt16BE(0x000a, 2);
 		time_usec.writeUInt32BE(tmpA, 6);
 		time_usec.writeUInt16BE(time_usec.length, 4);
 
-		var proto_type = Buffer.allocUnsafe(7);
+		let proto_type = Buffer.allocUnsafe(7);
 		proto_type.writeUInt16BE(0x0000, 0);
 		proto_type.writeUInt16BE(0x000b, 2);
 		proto_type.writeUInt8(rcinfo.payloadType, 6);
 		proto_type.writeUInt16BE(proto_type.length, 4);
 
 		tmpA = ToUint32(rcinfo.captureId);
-		var capt_id = Buffer.allocUnsafe(10);
+		let capt_id = Buffer.allocUnsafe(10);
 		capt_id.writeUInt16BE(0x0000, 0);
 		capt_id.writeUInt16BE(0x000c, 2);
 		capt_id.writeUInt32BE(tmpA, 6);
@@ -144,13 +144,13 @@ module.exports = {
 
 		// HEPNodeName w/ Fallback to HEP Capture ID
 		tmpA = rcinfo.hepNodeName ? rcinfo.hepNodeName : "" + rcinfo.captureId;
-		var hepnodename_chunk = Buffer.allocUnsafe(6 + tmpA.length);
+		let hepnodename_chunk = Buffer.allocUnsafe(6 + tmpA.length);
 		hepnodename_chunk.writeUInt16BE(0x0000, 0);
 		hepnodename_chunk.writeUInt16BE(0x0013, 2);
 		hepnodename_chunk.write(tmpA, 6, tmpA.length);
 		hepnodename_chunk.writeUInt16BE(hepnodename_chunk.length, 4);
 
-		var auth_chunk;
+		let auth_chunk;
 		if (typeof rcinfo.capturePass === 'string') {
 			auth_chunk = Buffer.allocUnsafe(6 + rcinfo.capturePass.length);
 			auth_chunk.writeUInt16BE(0x0000, 0);
@@ -162,25 +162,25 @@ module.exports = {
 			auth_chunk = Buffer.allocUnsafe(0);
 		}
 
-		var payload_chunk = Buffer.allocUnsafe(6 + msg.length);
+		let payload_chunk = Buffer.allocUnsafe(6 + msg.length);
 		payload_chunk.writeUInt16BE(0x0000, 0);
 		payload_chunk.writeUInt16BE(0x000f, 2);
 		payload_chunk.write(msg, 6, msg.length);
 		payload_chunk.writeUInt16BE(payload_chunk.length, 4);
 
-		var extensions_chunk = Buffer.allocUnsafe(0);
-		for (var i in extensions) {
-			for (var j in extensions[i]) {
-				var extdef = extensions[i][j];
+		let extensions_chunk = Buffer.allocUnsafe(0);
+		for (let i in extensions) {
+			for (let j in extensions[i]) {
+				let extdef = extensions[i][j];
 				if (typeof extdef === "object" &&
 					typeof extdef.keyName === "string" &&
 					typeof rcinfo[extdef.keyName] !== 'undefined') {
-					var this_chunk;
-					var data = rcinfo[extdef.keyName];
-					var failed = true;
+					let this_chunk;
+					let data = rcinfo[extdef.keyName];
+					let failed = true;
 					if (/\d{1,}/.test(extdef.type)) {
-						var bitLength = extdef.type.match(/\d{1,}/)[0];
-						var size = Math.floor(bitLength / 8) + 6;
+						const bitLength = extdef.type.match(/\d{1,}/)[0];
+						const size = Math.floor(bitLength / 8) + 6;
 						this_chunk = Buffer.allocUnsafe(size);
 						this_chunk.writeUInt16BE(i, 0);
 						this_chunk.writeUInt16BE(j, 2);
@@ -209,7 +209,7 @@ module.exports = {
 			}
 		}
 
-		var hep_message, correlation_chunk;
+		let hep_message, correlation_chunk;
 
 		if ((rcinfo.proto_type == 32 || rcinfo.proto_type == 35) && rcinfo.correlation_id.length) {
 
@@ -221,7 +221,7 @@ module.exports = {
 			correlation_chunk.writeUInt16BE(correlation_chunk.length, 4);
 
 			tmpA = ToUint16(rcinfo.mos);
-			var mos = Buffer.allocUnsafe(8);
+			let mos = Buffer.allocUnsafe(8);
 			mos.writeUInt16BE(0x0000, 0);
 			mos.writeUInt16BE(0x0020, 2);
 			mos.writeUInt16BE(tmpA, 6);
@@ -357,36 +357,29 @@ module.exports = {
 
 /* Functions */
 
-var modulo = function (a, b) {
+const modulo = function (a, b) {
 	return a - Math.floor(a / b) * b;
 };
 
-var ToUint32 = function (x) {
+const ToUint32 = function (x) {
 	return modulo(ToInteger(x), Math.pow(2, 32));
 };
 
-var ToUint16 = function (x) {
+const ToUint16 = function (x) {
 	return modulo(ToInteger(x), Math.pow(2, 16));
 };
 
-var ToInteger = function (x) {
+const ToInteger = function (x) {
 	x = Number(x);
 	return x < 0 ? Math.ceil(x) : Math.floor(x);
 };
 
-var ntohl = function (val) {
-	return ((val & 0xFF) << 24)
-		| ((val & 0xFF00) << 8)
-		| ((val >> 8) & 0xFF00)
-		| ((val >> 24) & 0xFF);
-};
-
-var inet_pton = function inet_pton(str) {
+const inet_pton = function inet_pton(str) {
 	// IPv4 addresses
 	if (str.indexOf(":") === -1) {
-		var buf = new Buffer.allocUnsafe(4);
+		let buf = new Buffer.allocUnsafe(4);
 		buf.fill(0);
-		var octets = str.split(/\./g).map(function (o) {
+		let octets = str.split(/\./g).map(function (o) {
 			assert(/^\d+$/.test(o), "Bad octet");
 			return parseInt(o, 10);
 		});
@@ -413,19 +406,19 @@ var inet_pton = function inet_pton(str) {
 		return buf;
 		// IPv6 addresses
 	} else {
-		var buf = new Buffer.allocUnsafe(16);
+		let buf = new Buffer.allocUnsafe(16);
 		buf.fill(0);
-		var dgroups = str.split(/::/g);
+		const dgroups = str.split(/::/g);
 		assert(dgroups.length <= 2, "Bad IPv6 address");
-		var groups = [];
-		var i;
+		let groups = [];
+		let i;
 
 		if (dgroups[0]) {
 			groups.push.apply(groups, dgroups[0].split(/:/g));
 			if (dgroups.length === 2) {
 				if (dgroups[1]) {
-					var splitted = dgroups[1].split(/:/g);
-					var fill = 8 - (groups.length + splitted.length);
+					const splitted = dgroups[1].split(/:/g);
+					const fill = 8 - (groups.length + splitted.length);
 					// Check against 1:1:1:1::1:1:1:1
 					assert(fill > 0, "Bad IPv6 address");
 					for (i = 0; i < fill; i++) {
@@ -451,20 +444,20 @@ var inet_pton = function inet_pton(str) {
 };
 
 // Build an IP packet header Parser
-var hepHeader = new Parser()
+const hepHeader = new Parser()
 	.endianess("big")
 	.string("hep", { length: 4, stripNull: true, assert: "HEP3" })
 	.uint16("hepLength")
 	.buffer("payload", { length: function () { return this.hepLength - 6; } }); // Length of HepMessage is defined including the 6 Byte Header
 
-var hepParse = new Parser()
+const hepParse = new Parser()
 	.endianess("big")
 	.uint16("vendor")
 	.uint16("type")
 	.uint16("length")
 	.buffer("chunk", { length: function () { return this.length - 6; } }); // Length of Chunk is defined including the 6 Byte header
 
-var hepDecode = function (data) {
+const hepDecode = function (data) {
 	switch (data.type) {
 		case 1:
 			return { rcinfo: { protocolFamily: data.chunk.readUInt8() } };
@@ -508,8 +501,8 @@ var hepDecode = function (data) {
 				typeof extensions[data.vendor][data.type] === 'object' &&
 				typeof extensions[data.vendor][data.type].keyName) {
 				returnData.rcinfo = {};
-				var keyName = extensions[data.vendor][data.type].keyName;
-				var type = extensions[data.vendor][data.type].type;
+				const keyName = extensions[data.vendor][data.type].keyName;
+				const type = extensions[data.vendor][data.type].type;
 				if (typeof type === 'string') {
 					if (typeof data.chunk['read' + type] === 'function') {
 						returnData.rcinfo[keyName] = data.chunk['read' + type]();
@@ -525,16 +518,3 @@ var hepDecode = function (data) {
 			return returnData;
 	}
 };
-
-function deepMerge(o1, o2) {
-	for (var k in o2) {
-		if (typeof (o2[k]) == 'object') {
-			if (!o1[k]) o1[k] = {};
-			//console.log(merge(o1[k],o2[k]) );
-			o1[k] = deepMerge(o1[k], o2[k]);
-		} else {
-			o1[k] = o2[k];
-		}
-	}
-	return o1;
-}
