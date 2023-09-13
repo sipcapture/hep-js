@@ -4,7 +4,7 @@
   "description": "HEP3 Library for Node.JS",
   "main": "index.js",
   "scripts": {
-    "test": "make test"
+    "test": "mocha --reporter spec"
   },
   "repository": {
     "type": "git",
@@ -31,12 +31,13 @@
   "bugs": {
     "url": "https://github.com/sipcapture/hep-js/issues"
   },
-  "devDependencies": {
-    "mocha": "~10.1.0",
-    "chai": "~3.0.0"
-  },
   "dependencies": {
-    "binary-parser": "^1.3.2",
-    "mixin-deep": "^2.0.0"
+    "binary-parser": "^2.2.1",
+    "ip": "^1.1.8",
+    "mixin-deep": "^2.0.1"
+  },
+  "devDependencies": {
+    "chai": "^4.3.8",
+    "mocha": "^10.2.0"
   }
 }

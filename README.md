@@ -38,16 +38,16 @@ Content-Length: 0
 
 #### Example: rcinfo
 ```
-rcinfo = { type: 'HEP',
+rcinfo = { 
+  type: 'HEP',
   version: 3,
-  payload_type: 'SIP',
   captureId: '2001',
   capturePass: 'myHep',
-  ip_family: 2,
-  time_sec: 1433719443,
-  time_usec: 979,
+  protocolFamily: 2,
+  timeSeconds: 1433719443,
+  timeUseconds: 979,
   protocol: 17,
-  proto_type: 1,
+  payloadType: 1,
   srcIp: '192.168.100.1',
   dstIp: '192.168.1.23',
   srcPort: 5060,
