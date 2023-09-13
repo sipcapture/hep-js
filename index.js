@@ -29,7 +29,8 @@ const debug = false;
 const Parser = require("binary-parser").Parser;
 const mixinDeep = require("mixin-deep");
 const assert = require("assert");
-const ipaddr = require("ipaddr.js");
+const ip = require("ip");
+
 let extensions = {};
 
 module.exports = {
@@ -91,13 +92,13 @@ module.exports = {
 		let src_ip = Buffer.allocUnsafe(rcinfo.protocolFamily == 10 ? 22 : 10);
 		src_ip.writeUInt16BE(0x0000, 0);
 		src_ip.writeUInt16BE(rcinfo.protocolFamily == 10 ? 0x0005 : 0x0003, 2);
-		inet_pton(rcinfo.srcIp).copy(src_ip, 6);
+		ip.toBuffer(rcinfo.srcIp).copy(src_ip, 6);
 		src_ip.writeUInt16BE(src_ip.length, 4);
 
 		let dst_ip = Buffer.allocUnsafe(rcinfo.protocolFamily == 10 ? 22 : 10);
 		dst_ip.writeUInt16BE(0x0000, 0);
 		dst_ip.writeUInt16BE(rcinfo.protocolFamily == 10 ? 0x0006 : 0x0004, 2);
-		inet_pton(rcinfo.dstIp).copy(dst_ip, 6);
+		ip.toBuffer(rcinfo.dstIp).copy(dst_ip, 6);
 		dst_ip.writeUInt16BE(dst_ip.length, 4);
 
 		/*port*/
@@ -374,75 +375,6 @@ const ToInteger = function (x) {
 	return x < 0 ? Math.ceil(x) : Math.floor(x);
 };
 
-const inet_pton = function inet_pton(str) {
-	// IPv4 addresses
-	if (str.indexOf(":") === -1) {
-		let buf = new Buffer.allocUnsafe(4);
-		buf.fill(0);
-		let octets = str.split(/\./g).map(function (o) {
-			assert(/^\d+$/.test(o), "Bad octet");
-			return parseInt(o, 10);
-		});
-		octets.forEach(function (octet) {
-			assert(octet >= 0, "Bad IPv4 address");
-			assert(octet <= 255, "Bad IPv4 address");
-		});
-
-		if (octets.length === 2) {
-			buf[0] = octets[0];
-			buf[3] = octets[1];
-		} else if (octets.length === 3) {
-			buf[0] = octets[0];
-			buf[1] = octets[1];
-			buf[3] = octets[2];
-		} else if (octets.length === 4) {
-			buf[0] = octets[0];
-			buf[1] = octets[1];
-			buf[2] = octets[2];
-			buf[3] = octets[3];
-		} else {
-			throw new Error("Bad IPv4 address");
-		}
-		return buf;
-		// IPv6 addresses
-	} else {
-		let buf = new Buffer.allocUnsafe(16);
-		buf.fill(0);
-		const dgroups = str.split(/::/g);
-		assert(dgroups.length <= 2, "Bad IPv6 address");
-		let groups = [];
-		let i;
-
-		if (dgroups[0]) {
-			groups.push.apply(groups, dgroups[0].split(/:/g));
-			if (dgroups.length === 2) {
-				if (dgroups[1]) {
-					const splitted = dgroups[1].split(/:/g);
-					const fill = 8 - (groups.length + splitted.length);
-					// Check against 1:1:1:1::1:1:1:1
-					assert(fill > 0, "Bad IPv6 address");
-					for (i = 0; i < fill; i++) {
-						groups.push(0);
-					}
-					groups.push.apply(groups, splitted);
-				} else {
-					// Check against 1:1:1:1:1:1:1:1::
-					assert(groups.length <= 7, "Bad IPv6 address");
-				}
-			} else {
-				// Check against 1:1:1
-				assert(groups.length === 8, "Bad IPv6 address");
-			}
-			for (i = 0; i < Math.min(groups.length, 8); i++) {
-				// Check against parseInt("127.0.0.1", 16) -> 295
-				assert(/^[0-9a-f]+$/.test(groups[i]), "Bad group");
-				buf.writeUInt16BE(parseInt(groups[i], 16), i * 2);
-			}
-			return buf;
-		}
-	}
-};
-
 // Build an IP packet header Parser
 const hepHeader = new Parser()
 	.endianess("big")
@@ -464,13 +396,13 @@ const hepDecode = function (data) {
 		case 2:
 			return { rcinfo: { protocol: data.chunk.readUInt8() } };
 		case 3:
-			return { rcinfo: { srcIp: ipaddr.fromByteArray(data.chunk).toString() } };
+			return { rcinfo: { srcIp: ip.toString(data.chunk) } };
 		case 4:
-			return { rcinfo: { dstIp: ipaddr.fromByteArray(data.chunk).toString() } };
+			return { rcinfo: { dstIp: ip.toString(data.chunk) } };
 		case 5:
-			return { rcinfo: { srcIp: ipaddr.fromByteArray(data.chunk).toString() } };
+			return { rcinfo: { srcIp: ip.toString(data.chunk) } };
 		case 6:
-			return { rcinfo: { dstIp: ipaddr.fromByteArray(data.chunk).toString() } };
+			return { rcinfo: { dstIp: ip.toString(data.chunk) } };
 		case 7:
 			return { rcinfo: { srcPort: data.chunk.readUInt16BE() } };
 		case 8:
