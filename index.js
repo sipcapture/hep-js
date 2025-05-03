@@ -76,7 +76,7 @@ module.exports = {
 	var ip_family = Buffer.allocUnsafe(7);
 	ip_family.writeUInt16BE(0x0000, 0);
 	ip_family.writeUInt16BE(0x0001,2);
-	ip_family.writeUInt8(rcinfo.protocolFamily,6);
+	ip_family.writeUInt8(rcinfo.ip_family,6);
 	ip_family.writeUInt16BE(ip_family.length,4);
 
 	var ip_proto = Buffer.allocUnsafe(7);
@@ -86,23 +86,19 @@ module.exports = {
 	ip_proto.writeUInt16BE(ip_proto.length,4);
 
 	/*ip*/
-	var d = rcinfo.srcIp ? rcinfo.srcIp.split('.') : ['127','0','0','1'];
-	var tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
-
-	var src_ip4 = Buffer.allocUnsafe(10);
-	src_ip4.writeUInt16BE(0x0000, 0);
-	src_ip4.writeUInt16BE(0x0003, 2);
-	src_ip4.writeUInt32BE(tmpip,6);
-	src_ip4.writeUInt16BE(src_ip4.length,4);
-
-	d = rcinfo.dstIp ? rcinfo.dstIp.split('.') : ['127','0','0','1'];
-	tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
-
-	var dst_ip4 = Buffer.allocUnsafe(10);
-	dst_ip4.writeUInt16BE(0x0000, 0);
-	dst_ip4.writeUInt16BE(0x0004, 2);
-	dst_ip4.writeUInt32BE(tmpip,6);
-	dst_ip4.writeUInt16BE(dst_ip4.length,4);
+	var src_ip = Buffer.allocUnsafe (rcinfo.ip_family == 10 ? 22 : 10);
+	src_ip.writeUInt16BE(0x0000, 0);
+	src_ip.writeUInt16BE(rcinfo.ip_family == 10 ? 0x0005 : 0x0003, 2);
+	inet_pton(rcinfo.srcIp).copy(src_ip, 6);
+	src_ip.writeUInt16BE(src_ip.length,4);
+	//console.log("BUFFER JSON SRC", src_ip.toJSON());
+	
+	var dst_ip = Buffer.allocUnsafe (rcinfo.ip_family == 10 ? 22 : 10);
+	dst_ip.writeUInt16BE(0x0000, 0);
+	dst_ip.writeUInt16BE(rcinfo.ip_family == 10 ? 0x0006 : 0x0004, 2);
+	inet_pton(rcinfo.dstIp).copy(dst_ip, 6);
+	dst_ip.writeUInt16BE(dst_ip.length,4);
+	//console.log("BUFFER JSON DST", dst_ip.toJSON());
 
 	var src_port = Buffer.allocUnsafe(8);
 	var tmpA = rcinfo.srcPort ? parseInt(rcinfo.srcPort,10) : 0;
@@ -234,8 +230,8 @@ module.exports = {
 			header, 
 			ip_family,
 			ip_proto,
-			src_ip4,
-			dst_ip4,
+			src_ip,
+			dst_ip,
 			src_port,
 			dst_port,
 			time_sec,
@@ -272,8 +268,8 @@ module.exports = {
 			header, 
 			ip_family,
 			ip_proto,
-			src_ip4,
-			dst_ip4,
+			src_ip,
+			dst_ip,
 			src_port,
 			dst_port,
 			time_sec,
@@ -302,8 +298,8 @@ module.exports = {
 			header, 
 			ip_family,
 			ip_proto,
-			src_ip4,
-			dst_ip4,
+			src_ip,
+			dst_ip,
 			src_port,
 			dst_port,
 			time_sec,
@@ -323,8 +319,8 @@ module.exports = {
 			header,
 			ip_family,
 			ip_proto,
-			src_ip4,
-			dst_ip4,
+			src_ip,
+			dst_ip,
 			src_port,
 			dst_port,
 			time_sec,
@@ -385,49 +381,80 @@ var ntohl = function (val) {
            | ((val >> 24) & 0xFF);
 };
 
-var inet_pton = function inet_pton(a) {
+// Very simple inet_pton(3) equivalent.
+var inet_pton = function inet_pton(str) {
+	
+    // IPv4.
+    if (str.indexOf(":") === -1) {
 
-  var r, m, x, i, j, f = String.fromCharCode;
-  // IPv4
-  m = a.match(/^(?:\d{1,3}(?:\.|$)){4}/);
-  if (m) {
-    m = m[0].split('.');
-    m = f(m[0]) + f(m[1]) + f(m[2]) + f(m[3]);
-    // Return if 4 bytes, otherwise false.
-    return m.length === 4 ? m : false;
-  }
-  r = /^((?:[\da-f]{1,4}(?::|)){0,8})(::)?((?:[\da-f]{1,4}(?::|)){0,8})$/;
-  // IPv6
-  m = a.match(r);
-  if (m) {
-    // Translate each hexadecimal value.
-    for (j = 1; j < 4; j++) {
-      // Indice 2 is :: and if no length, continue.
-      if (j === 2 || m[j].length === 0) {
-        continue;
-      }
-      m[j] = m[j].split(':');
-      for (i = 0; i < m[j].length; i++) {
-        m[j][i] = parseInt(m[j][i], 16);
-        // Would be NaN if it was blank, return false.
-        if (isNaN(m[j][i])) {
-          // Invalid IP.
-          return false;
+        var buf = new Buffer(4);
+        buf.fill(0);
+
+        var octets = str.split(/\./g).map(function(o) {
+            assert(/^\d+$/.test(o), "Bad octet");
+            return parseInt(o, 10);
+        });
+        // Support short form from inet_aton(3) man page.
+        octets.forEach(function(octet) {
+            assert(octet >= 0, "Bad IPv4 address");
+            assert(octet <= 255, "Bad IPv4 address");
+        });
+        if (octets.length === 2) {
+            buf[0] = octets[0];
+            buf[3] = octets[1];
+        } else if (octets.length === 3) {
+            buf[0] = octets[0];
+            buf[1] = octets[1];
+            buf[3] = octets[2];
+        } else if (octets.length === 4) {
+            buf[0] = octets[0];
+            buf[1] = octets[1];
+            buf[2] = octets[2];
+            buf[3] = octets[3];
+        } else {
+            throw new Error("Bad IPv4 address");
         }
-        m[j][i] = f(m[j][i] >> 8) + f(m[j][i] & 0xFF);
-      }
-      m[j] = m[j].join('');
+
+        return buf;
+        // IPv6.
+        // IPv6.
+    } else {
+        var buf = new Buffer(16);
+        buf.fill(0);
+        var dgroups = str.split(/::/g);
+        // Check against 1::1::1
+        assert(dgroups.length <= 2, "Bad IPv6 address");
+        var groups = [];
+        var i;
+        if (dgroups[0]) {
+            groups.push.apply(groups, dgroups[0].split(/:/g));
+        }
+        if (dgroups.length === 2) {
+            if (dgroups[1]) {
+                var splitted = dgroups[1].split(/:/g);
+                var fill = 8 - (groups.length + splitted.length);
+                // Check against 1:1:1:1::1:1:1:1
+                assert(fill > 0, "Bad IPv6 address");
+                for (i = 0; i < fill; i++) {
+                    groups.push(0);
+                }
+                groups.push.apply(groups, splitted);
+            } else {
+                // Check against 1:1:1:1:1:1:1:1::
+                assert(groups.length <= 7, "Bad IPv6 address");
+            }
+        } else {
+            // Check against 1:1:1
+            assert(groups.length === 8, "Bad IPv6 address");
+        }
+        for (i = 0; i < Math.min(groups.length, 8); i++) {
+            // Check against parseInt("127.0.0.1", 16) -> 295
+            assert(/^[0-9a-f]+$/.test(groups[i]), "Bad group");
+            buf.writeUInt16BE(parseInt(groups[i], 16), i * 2);
+        }
+
+        return buf;
     }
-    x = m[1].length + m[3].length;
-    if (x === 16) {
-      return m[1] + m[3];
-    } else if (x < 16 && m[2].length > 0) {
-      return m[1] + (new Array(16 - x + 1))
-        .join('\x00') + m[3];
-    }
-  }
-  // Invalid IP.
-  return false;
 };
 
 // Build an IP packet header Parser
