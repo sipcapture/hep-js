@@ -28,14 +28,17 @@ var debug = false;
 // Module import
 var Parser = require("binary-parser").Parser;
 var mixinDeep = require('mixin-deep');
-var extensions = {};
+/**
+ * @type {{}[][]}
+ */
+var extensions = [];
 
 module.exports = {
   /**
    * Decode HEP3 Packet to JSON Object.
    *
-   * @param  {Buffer} hep message
-   * @return {Object}
+   * @param  {Buffer} message
+   * @return {{rcinfo: {type:string, version:number, payloadType?: number, payload_type?: number, captureId: string, hepNodeName?: string, capturePass: string, protocolFamily?: number, ip_family?: number, protocol: number, proto_type: number, mos?: number, correlation_id: string, srcIp: string, dstIp: string, srcPort: number|string, dstPort: number|string, time_sec?: number, timeSeconds?: number, timeUseconds?: number, time_usec?: number}, payload: string} | false}
    */
   decapsulate: function(message) {
     if (debug) console.log('Decoding HEP3 Packet...');
@@ -59,24 +62,25 @@ module.exports = {
     } catch(e) {
 	return false;
     }
-
+	return false;
   },
   /**
    * Encode HEP3 Packet from JSON Object.
    *
-   * @param  {String} sip_msg
-   * @param  {String} hep_json
-   * @return {Buffer} hep message
+   * @param  {String} msg
+   * @param  {{type:string, version:number, payloadType?: number, payload_type?: number, captureId: string, hepNodeName?: string, capturePass: string, protocolFamily?: number, ip_family?: number, protocol: number, proto_type: number, mos?: number, correlation_id: string, srcIp: string, dstIp: string, srcPort: number|string, dstPort: number|string, time_sec?: number, timeSeconds?: number, timeUseconds?: number, time_usec?: number}} rcinfo
+   * @return {Buffer} HEP packet
    */
   encapsulate: function(msg,rcinfo) {
-	if (debug) console.log('Sending HEP3 Packet...');
+	if (debug) console.log('Encapsulating HEP3 Packet...');
 	var header = Buffer.allocUnsafe(6);
-	header.write ("HEP3");
+	header.write("HEP3");
 
 	var ip_family = Buffer.allocUnsafe(7);
 	ip_family.writeUInt16BE(0x0000, 0);
 	ip_family.writeUInt16BE(0x0001,2);
-	ip_family.writeUInt8(rcinfo.protocolFamily,6);
+	let ip_protocol_family = rcinfo.ip_family || rcinfo.protocolFamily
+	ip_family.writeUInt8(ip_protocol_family,6);
 	ip_family.writeUInt16BE(ip_family.length,4);
 
 	var ip_proto = Buffer.allocUnsafe(7);
@@ -118,14 +122,16 @@ module.exports = {
 	dst_port.writeUInt16BE(tmpA,6);
 	dst_port.writeUInt16BE(dst_port.length,4);
 
-	tmpA = ToUint32(rcinfo.timeSeconds);
+	let timeInSeconds = rcinfo.time_sec || rcinfo.timeSeconds
+	tmpA = ToUint32(timeInSeconds);
 	var time_sec = Buffer.allocUnsafe(10);
 	time_sec.writeUInt16BE(0x0000, 0);
 	time_sec.writeUInt16BE(0x0009, 2);
 	time_sec.writeUInt32BE(tmpA,6);
 	time_sec.writeUInt16BE(time_sec.length,4);
 
-	tmpA = ToUint32(rcinfo.timeUseconds);
+	let timeInMicroSeconds = rcinfo.time_usec || rcinfo.timeUseconds
+	tmpA = ToUint32(timeInMicroSeconds);
 	var time_usec = Buffer.allocUnsafe(10);
 	time_usec.writeUInt16BE(0x0000, 0);
 	time_usec.writeUInt16BE(0x000a, 2);
@@ -135,7 +141,7 @@ module.exports = {
 	var proto_type = Buffer.allocUnsafe(7);
 	proto_type.writeUInt16BE(0x0000, 0);
 	proto_type.writeUInt16BE(0x000b,2);
-	proto_type.writeUInt8(rcinfo.payloadType,6);
+	proto_type.writeUInt8(rcinfo.proto_type,6);
 	proto_type.writeUInt16BE(proto_type.length,4);
 
 	tmpA = ToUint32(rcinfo.captureId);
@@ -146,11 +152,11 @@ module.exports = {
 	capt_id.writeUInt16BE(capt_id.length,4);
 	  
 	// HEPNodeName w/ Fallback to HEP Capture ID
-	tmpA = rcinfo.hepNodeName ? rcinfo.hepNodeName : "" + rcinfo.captureId;
-	var hepnodename_chunk = Buffer.allocUnsafe(6 + tmpA.length);
+	let tmpB = rcinfo.hepNodeName ? rcinfo.hepNodeName : "" + rcinfo.captureId;
+	var hepnodename_chunk = Buffer.allocUnsafe(6 + tmpB.length);
 	hepnodename_chunk.writeUInt16BE(0x0000, 0);
 	hepnodename_chunk.writeUInt16BE(0x0013, 2);
-	hepnodename_chunk.write(tmpA,6, tmpA.length);
+	hepnodename_chunk.write(tmpB,6, tmpB.length);
 	hepnodename_chunk.writeUInt16BE(hepnodename_chunk.length,4);
 
 	var auth_chunk;
@@ -214,7 +220,7 @@ module.exports = {
 
 	var hep_message, correlation_chunk;
 
-	if ((rcinfo.proto_type == 32 || rcinfo.proto_type == 35 ) && rcinfo.correlation_id.length) {
+	if ((rcinfo.proto_type == 34 || rcinfo.proto_type == 35 || rcinfo.proto_type == 36 || rcinfo.proto_type == 37 ) && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
 	        correlation_chunk = Buffer.allocUnsafe(6 + rcinfo.correlation_id.length);
