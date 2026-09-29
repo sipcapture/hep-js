@@ -1,4 +1,5 @@
-var should = require('chai').should(),
+var assert = require('assert'),
+    should = require('chai').should(),
     hepnode = require('../index'),
     encode = hepnode.encode,
     decode = hepnode.decode,
@@ -85,5 +86,84 @@ describe('ipv6', function() {
     decoded.rcinfo.srcIp.should.equal('::1');
     decoded.rcinfo.dstIp.should.equal('::ffff:c000:201');
     decoded.rcinfo.protocolFamily.should.equal(10);
+  });
+});
+
+describe('UTF-8 encapsulation', function() {
+  var rcinfo = {
+    ip_family: 2,
+    protocol: 17,
+    srcIp: '192.168.100.1',
+    dstIp: '192.168.1.23',
+    srcPort: 5060,
+    dstPort: 5060,
+    time_sec: 1433719443,
+    time_usec: 979,
+    proto_type: 1,
+    captureId: 2001,
+    capturePass: 'myHep'
+  };
+
+  it('keeps a multi-byte payload intact (#39)', function() {
+    var payload = 'š'.repeat(20);
+    var decoded = decapsulate(encapsulate(payload, rcinfo));
+    assert.strictEqual(decoded.payload, payload);
+  });
+
+  it('keeps surrogate pairs in the payload intact', function() {
+    var payload = 'INVITE sip:привет@example SIP/2.0\r\nCall-ID: 😀\r\n';
+    var decoded = decapsulate(encapsulate(payload, rcinfo));
+    assert.strictEqual(decoded.payload, payload);
+  });
+
+  it('keeps multi-byte strings in rcinfo chunks', function() {
+    var info = {
+      ip_family: rcinfo.ip_family,
+      protocol: rcinfo.protocol,
+      srcIp: rcinfo.srcIp,
+      dstIp: rcinfo.dstIp,
+      srcPort: rcinfo.srcPort,
+      dstPort: rcinfo.dstPort,
+      time_sec: rcinfo.time_sec,
+      time_usec: rcinfo.time_usec,
+      proto_type: rcinfo.proto_type,
+      captureId: rcinfo.captureId,
+      capturePass: 'пароль',
+      hepNodeName: 'узел-š',
+      correlation_id: 'corr-š-😀'
+    };
+    var payload = 'š';
+    var decoded = decapsulate(encapsulate(payload, info));
+    assert.strictEqual(decoded.payload, payload);
+    assert.strictEqual(decoded.rcinfo.capturePass, info.capturePass);
+    assert.strictEqual(decoded.rcinfo.hepNodeName, info.hepNodeName);
+    assert.strictEqual(decoded.rcinfo.correlation_id, info.correlation_id);
+  });
+
+  it('keeps multi-byte vendor extension strings', function() {
+    hepnode.addVendorExtensions({
+      0x0009: {
+        0x0080: {
+          keyName: 'note'
+        }
+      }
+    });
+    var info = {
+      ip_family: rcinfo.ip_family,
+      protocol: rcinfo.protocol,
+      srcIp: rcinfo.srcIp,
+      dstIp: rcinfo.dstIp,
+      srcPort: rcinfo.srcPort,
+      dstPort: rcinfo.dstPort,
+      time_sec: rcinfo.time_sec,
+      time_usec: rcinfo.time_usec,
+      proto_type: rcinfo.proto_type,
+      captureId: rcinfo.captureId,
+      capturePass: rcinfo.capturePass,
+      note: 'заметка-š'
+    };
+    var decoded = decapsulate(encapsulate('ok', info));
+    assert.strictEqual(decoded.payload, 'ok');
+    assert.strictEqual(decoded.rcinfo.note, info.note);
   });
 });
