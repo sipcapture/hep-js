@@ -56,6 +56,9 @@ module.exports = {
 	    tot += PAYLOAD.length;
 	    if(tot>=HEP.payload.length) { break; }
 	  }
+	  if (Buffer.isBuffer(decoded.payload) && !(decoded.rcinfo && isBinaryPayloadType(decoded.rcinfo.payloadType))) {
+	    decoded.payload = decoded.payload.toString('utf8');
+	  }
 	  if(debug) console.log(decoded);
 	  return decoded;
 	}
@@ -67,7 +70,7 @@ module.exports = {
   /**
    * Encode HEP3 Packet from JSON Object.
    *
-   * @param  {String} msg
+   * @param  {String|Buffer} msg
    * @param  {{type:string, version:number, payloadType?: number, payload_type?: number, captureId: string, hepNodeName?: string, capturePass: string, protocolFamily?: number, ip_family?: number, protocol: number, proto_type: number, mos?: number, correlation_id: string, srcIp: string, dstIp: string, srcPort: number|string, dstPort: number|string, time_sec?: number, timeSeconds?: number, timeUseconds?: number, time_usec?: number}} rcinfo
    * @return {Buffer} HEP packet
    */
@@ -147,7 +150,9 @@ module.exports = {
 	  ? writeUtf8Chunk(0x0000, 0x000e, rcinfo.capturePass)
 	  : Buffer.allocUnsafe(0);
 
-	var payload_chunk = writeUtf8Chunk(0x0000, 0x000f, msg);
+	var payload_chunk = Buffer.isBuffer(msg)
+	  ? writeBytesChunk(0x0000, 0x000f, msg)
+	  : writeUtf8Chunk(0x0000, 0x000f, msg);
 
 	var extensions_chunk = Buffer.allocUnsafe(0);
 	for(var i in extensions) {
@@ -188,7 +193,7 @@ module.exports = {
 
 	var hep_message, correlation_chunk;
 
-	if ((rcinfo.proto_type == 34 || rcinfo.proto_type == 35 || rcinfo.proto_type == 36 || rcinfo.proto_type == 37 ) && rcinfo.correlation_id.length) {
+	if (isBinaryPayloadType(payloadTypeValue) && rcinfo.correlation_id && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
 	        correlation_chunk = writeUtf8Chunk(0x0000, 0x0011, rcinfo.correlation_id);
@@ -329,6 +334,19 @@ function writeUtf8Chunk(vendor, type, text) {
 	return chunk;
 }
 
+function writeBytesChunk(vendor, type, body) {
+	var chunk = Buffer.allocUnsafe(6 + body.length);
+	chunk.writeUInt16BE(vendor, 0);
+	chunk.writeUInt16BE(type, 2);
+	body.copy(chunk, 6);
+	chunk.writeUInt16BE(chunk.length, 4);
+	return chunk;
+}
+
+function isBinaryPayloadType(payloadType) {
+	return payloadType == 34 || payloadType == 35 || payloadType == 36 || payloadType == 37;
+}
+
 function ipAddressChunk(family, address, isSource) {
 	var ipv6 = Number(family) === 10;
 	var type = ipv6 ? (isSource ? 0x0005 : 0x0006) : (isSource ? 0x0003 : 0x0004);
@@ -441,58 +459,6 @@ var ToInteger =function (x) {
         return x < 0 ? Math.ceil(x) : Math.floor(x);
 };
 
-var ntohl = function (val) {
-    return ((val & 0xFF) << 24)
-           | ((val & 0xFF00) << 8)
-           | ((val >> 8) & 0xFF00)
-           | ((val >> 24) & 0xFF);
-};
-
-var inet_pton = function inet_pton(a) {
-
-  var r, m, x, i, j, f = String.fromCharCode;
-  // IPv4
-  m = a.match(/^(?:\d{1,3}(?:\.|$)){4}/);
-  if (m) {
-    m = m[0].split('.');
-    m = f(m[0]) + f(m[1]) + f(m[2]) + f(m[3]);
-    // Return if 4 bytes, otherwise false.
-    return m.length === 4 ? m : false;
-  }
-  r = /^((?:[\da-f]{1,4}(?::|)){0,8})(::)?((?:[\da-f]{1,4}(?::|)){0,8})$/;
-  // IPv6
-  m = a.match(r);
-  if (m) {
-    // Translate each hexadecimal value.
-    for (j = 1; j < 4; j++) {
-      // Indice 2 is :: and if no length, continue.
-      if (j === 2 || m[j].length === 0) {
-        continue;
-      }
-      m[j] = m[j].split(':');
-      for (i = 0; i < m[j].length; i++) {
-        m[j][i] = parseInt(m[j][i], 16);
-        // Would be NaN if it was blank, return false.
-        if (isNaN(m[j][i])) {
-          // Invalid IP.
-          return false;
-        }
-        m[j][i] = f(m[j][i] >> 8) + f(m[j][i] & 0xFF);
-      }
-      m[j] = m[j].join('');
-    }
-    x = m[1].length + m[3].length;
-    if (x === 16) {
-      return m[1] + m[3];
-    } else if (x < 16 && m[2].length > 0) {
-      return m[1] + (new Array(16 - x + 1))
-        .join('\x00') + m[3];
-    }
-  }
-  // Invalid IP.
-  return false;
-};
-
 // Build an IP packet header Parser
 var hepHeader = new Parser()
   .endianess("big")
@@ -514,7 +480,33 @@ var hepIps = new Parser()
      length: 4
   });
 
+function decodeVendorExtension(data) {
+	var returnData = {};
+	if(typeof extensions[data.vendor] === 'object' &&
+	   typeof extensions[data.vendor][data.type] === 'object' &&
+	   typeof extensions[data.vendor][data.type].keyName) {
+	    returnData.rcinfo = {};
+	    var keyName = extensions[data.vendor][data.type].keyName;
+	    var type = extensions[data.vendor][data.type].type;
+	    if(typeof type === 'string') {
+	      if(typeof data.chunk['read'+type] === 'function') {
+		returnData.rcinfo[keyName] = data.chunk['read'+type]();
+	      }
+	      else if(typeof data.chunk['read'+type+"BE"] === 'function') {
+		returnData.rcinfo[keyName] = data.chunk['read'+type+"BE"]();
+	      }
+	    }
+	    else {
+	      returnData.rcinfo[keyName] = data.chunk.toString();
+	    }
+	}
+	return returnData;
+}
+
 var hepDecode = function(data){
+  if (data.vendor !== 0) {
+    return decodeVendorExtension(data);
+  }
   switch(data.type) {
     case 1:
 	return { rcinfo: { protocolFamily: data.chunk.readUInt8() } };
@@ -543,7 +535,7 @@ var hepDecode = function(data){
     case 14:
 	return { rcinfo: { capturePass: data.chunk.toString() } };
     case 15:
-	return { payload: data.chunk.toString() };
+	return { payload: Buffer.from(data.chunk) };
     case 17:
         return { rcinfo: { correlation_id: data.chunk.toString() } };
     case 19:
@@ -551,28 +543,9 @@ var hepDecode = function(data){
     case 32:
 	return { rcinfo: { mos: data.chunk.readUInt16BE() } };
     case 36:
-	return { rcinfo: { transaction_type: data.chunk.readUInt16BE() } };
+	return { rcinfo: { transaction_type: data.chunk.toString() } };
     default:
-	var returnData = {};
-	if(typeof extensions[data.vendor] === 'object' &&
-	   typeof extensions[data.vendor][data.type] === 'object' &&
-	   typeof extensions[data.vendor][data.type].keyName) {
-	    returnData.rcinfo = {};
-	    var keyName = extensions[data.vendor][data.type].keyName;
-	    var type = extensions[data.vendor][data.type].type;
-	    if(typeof type === 'string') {
-	      if(typeof data.chunk['read'+type] === 'function') {
-		returnData.rcinfo[keyName] = data.chunk['read'+type]();
-	      }
-	      else if(typeof data.chunk['read'+type+"BE"] === 'function') {
-		returnData.rcinfo[keyName] = data.chunk['read'+type+"BE"]();
-	      }
-	    }
-	    else {
-	      returnData.rcinfo[keyName] = data.chunk.toString();
-	    }
-	}
-	return returnData;
+	return decodeVendorExtension(data);
   }
 };
 

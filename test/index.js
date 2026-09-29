@@ -167,3 +167,78 @@ describe('UTF-8 encapsulation', function() {
     assert.strictEqual(decoded.rcinfo.note, info.note);
   });
 });
+
+function rcBase() {
+  return {
+    ip_family: 2,
+    protocol: 17,
+    srcIp: '192.168.100.1',
+    dstIp: '192.168.1.23',
+    srcPort: 5060,
+    dstPort: 5060,
+    time_sec: 1433719443,
+    time_usec: 979,
+    proto_type: 1,
+    captureId: 2001
+  };
+}
+
+describe('transaction_type', function() {
+  it('round-trips a string transaction type', function() {
+    var info = rcBase();
+    info.transaction_type = 'call';
+    info.correlation_id = 'tx-š';
+    var decoded = decapsulate(encapsulate('BYE sip:1 SIP/2.0\r\n', info));
+    assert.strictEqual(decoded.rcinfo.transaction_type, 'call');
+    assert.strictEqual(decoded.rcinfo.correlation_id, 'tx-š');
+    assert.strictEqual(decoded.payload, 'BYE sip:1 SIP/2.0\r\n');
+  });
+});
+
+describe('binary payload', function() {
+  it('round-trips an RTP buffer', function() {
+    var payload = Buffer.from([0x80, 0x00, 0xff, 0xc3, 0x28, 0x00]);
+    var info = rcBase();
+    info.proto_type = 34;
+    info.correlation_id = 'rtp-1';
+    info.mos = 450;
+    var decoded = decapsulate(encapsulate(payload, info));
+    assert.ok(Buffer.isBuffer(decoded.payload));
+    assert.deepStrictEqual(Array.from(decoded.payload), Array.from(payload));
+    assert.strictEqual(decoded.rcinfo.correlation_id, 'rtp-1');
+    assert.strictEqual(decoded.rcinfo.mos, 450);
+    assert.strictEqual(decoded.rcinfo.payloadType, 34);
+  });
+
+  it('adds media chunks when only payloadType is set', function() {
+    var info = rcBase();
+    delete info.proto_type;
+    info.payloadType = 35;
+    info.correlation_id = 'rtcp-1';
+    info.mos = 10;
+    var decoded = decapsulate(encapsulate('rtcp', info));
+    assert.strictEqual(decoded.rcinfo.payloadType, 35);
+    assert.strictEqual(decoded.rcinfo.correlation_id, 'rtcp-1');
+    assert.strictEqual(decoded.rcinfo.mos, 10);
+    assert.deepStrictEqual(Array.from(decoded.payload), Array.from(Buffer.from('rtcp')));
+  });
+});
+
+describe('vendor chunk types', function() {
+  it('does not treat vendor type 1 as the IP family', function() {
+    hepnode.addVendorExtensions({
+      0x0009: {
+        0x0001: {
+          keyName: 'note'
+        }
+      }
+    });
+    var info = rcBase();
+    info.capturePass = 'myHep';
+    info.note = 'vendor-1';
+    var decoded = decapsulate(encapsulate('ok', info));
+    assert.strictEqual(decoded.rcinfo.protocolFamily, 2);
+    assert.strictEqual(decoded.rcinfo.note, 'vendor-1');
+    assert.strictEqual(decoded.payload, 'ok');
+  });
+});
