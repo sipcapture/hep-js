@@ -22,6 +22,7 @@ npm install hep-js
 const HEPjs = require('hep-js');
 var hep_encoder = HEPjs.encapsulate(payload,rcinfo); // returns data buffer
 var hep_decoder = HEPjs.decapsulate(buffer); // returns JSON Object {payload,rcinfo}
+// A Buffer payload is copied as raw bytes. proto_type 34–37 comes back as a Buffer; other types come back as a UTF-8 string.
 
 ```
 
@@ -40,7 +41,6 @@ Content-Length: 0
 ```
 rcinfo = { type: 'HEP',
   version: 3,
-  payload_type: 'SIP',
   captureId: '2001',
   capturePass: 'myHep',
   ip_family: 2,
