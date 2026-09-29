@@ -32,8 +32,8 @@
     "url": "https://github.com/sipcapture/hep-js/issues"
   },
   "devDependencies": {
-    "mocha": "~11.7.5",
-    "chai": "~3.0.0"
+    "chai": "^6.2.2",
+    "mocha": "~11.7.5"
   },
   "dependencies": {
     "binary-parser": "^2.3.0",
