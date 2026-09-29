@@ -141,29 +141,13 @@ module.exports = {
 	  
 	// HEPNodeName w/ Fallback to HEP Capture ID
 	let tmpB = rcinfo.hepNodeName ? rcinfo.hepNodeName : "" + rcinfo.captureId;
-	var hepnodename_chunk = Buffer.allocUnsafe(6 + tmpB.length);
-	hepnodename_chunk.writeUInt16BE(0x0000, 0);
-	hepnodename_chunk.writeUInt16BE(0x0013, 2);
-	hepnodename_chunk.write(tmpB,6, tmpB.length);
-	hepnodename_chunk.writeUInt16BE(hepnodename_chunk.length,4);
+	var hepnodename_chunk = writeUtf8Chunk(0x0000, 0x0013, tmpB);
 
-	var auth_chunk;
-	if(typeof rcinfo.capturePass === 'string') {
-	  auth_chunk = Buffer.allocUnsafe(6 + rcinfo.capturePass.length);
-	  auth_chunk.writeUInt16BE(0x0000, 0);
-	  auth_chunk.writeUInt16BE(0x000e, 2);
-	  auth_chunk.write(rcinfo.capturePass,6, rcinfo.capturePass.length);
-	  auth_chunk.writeUInt16BE(auth_chunk.length,4);
-	}
-	else {
-	  auth_chunk = Buffer.allocUnsafe(0);
-	}
+	var auth_chunk = typeof rcinfo.capturePass === 'string'
+	  ? writeUtf8Chunk(0x0000, 0x000e, rcinfo.capturePass)
+	  : Buffer.allocUnsafe(0);
 
-	var payload_chunk = Buffer.allocUnsafe(6 + msg.length);
-	payload_chunk.writeUInt16BE(0x0000, 0);
-	payload_chunk.writeUInt16BE(0x000f, 2);
-	payload_chunk.write(msg, 6, msg.length);
-	payload_chunk.writeUInt16BE(payload_chunk.length,4);
+	var payload_chunk = writeUtf8Chunk(0x0000, 0x000f, msg);
 
 	var extensions_chunk = Buffer.allocUnsafe(0);
 	for(var i in extensions) {
@@ -192,11 +176,7 @@ module.exports = {
 		  this_chunk.writeUInt16BE(this_chunk.length,4);
 		}
 		else if(/string$/.test(extdef.type) || extdef.type === undefined) {
-		  this_chunk = Buffer.allocUnsafe(6+data.length);
-		  this_chunk.writeUInt16BE(i, 0);
-		  this_chunk.writeUInt16BE(j, 2);
-		  this_chunk.write(data, 6, data.length);
-		  this_chunk.writeUInt16BE(this_chunk.length, 4);
+		  this_chunk = writeUtf8Chunk(i, j, data);
 		  failed = false;
 		}
 		if(typeof this_chunk !== 'undefined' && !failed) {
@@ -211,11 +191,7 @@ module.exports = {
 	if ((rcinfo.proto_type == 34 || rcinfo.proto_type == 35 || rcinfo.proto_type == 36 || rcinfo.proto_type == 37 ) && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
-	        correlation_chunk = Buffer.allocUnsafe(6 + rcinfo.correlation_id.length);
-	        correlation_chunk.writeUInt16BE(0x0000, 0);
-	        correlation_chunk.writeUInt16BE(0x0011, 2);
-	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
-	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
+	        correlation_chunk = writeUtf8Chunk(0x0000, 0x0011, rcinfo.correlation_id);
 
 	        tmpA = ToUint16(rcinfo.mos);
 		var mos = Buffer.allocUnsafe(8);
@@ -249,18 +225,10 @@ module.exports = {
 	else if (rcinfo.transaction_type && rcinfo.transaction_type.length && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
-	        correlation_chunk = Buffer.allocUnsafe(6 + rcinfo.correlation_id.length);
-	        correlation_chunk.writeUInt16BE(0x0000, 0);
-	        correlation_chunk.writeUInt16BE(0x0011, 2);
-	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
-	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
+	        correlation_chunk = writeUtf8Chunk(0x0000, 0x0011, rcinfo.correlation_id);
 
 	        // create transaction_type chunk
-	        var transaction_type = Buffer.allocUnsafe(6 + rcinfo.transaction_type.length);
-	        transaction_type.writeUInt16BE(0x0000, 0);
-	        transaction_type.writeUInt16BE(0x0024, 2);
-	        transaction_type.write(rcinfo.transaction_type,6, rcinfo.transaction_type.length);
-	        transaction_type.writeUInt16BE(transaction_type.length,4);
+	        var transaction_type = writeUtf8Chunk(0x0000, 0x0024, rcinfo.transaction_type);
 
 		hep_message = Buffer.concat([
 			header, 
@@ -286,11 +254,7 @@ module.exports = {
 	else if (rcinfo.correlation_id && rcinfo.correlation_id.length) {
 
 		// create correlation chunk
-	        correlation_chunk = Buffer.allocUnsafe(6 + rcinfo.correlation_id.length);
-	        correlation_chunk.writeUInt16BE(0x0000, 0);
-	        correlation_chunk.writeUInt16BE(0x0011, 2);
-	        correlation_chunk.write(rcinfo.correlation_id,6, rcinfo.correlation_id.length);
-	        correlation_chunk.writeUInt16BE(correlation_chunk.length,4);
+	        correlation_chunk = writeUtf8Chunk(0x0000, 0x0011, rcinfo.correlation_id);
 		
 		hep_message = Buffer.concat([
 			header, 
@@ -354,6 +318,16 @@ module.exports = {
 
 
 /* Functions */
+
+function writeUtf8Chunk(vendor, type, text) {
+	var size = Buffer.byteLength(text, 'utf8');
+	var chunk = Buffer.allocUnsafe(6 + size);
+	chunk.writeUInt16BE(vendor, 0);
+	chunk.writeUInt16BE(type, 2);
+	chunk.write(text, 6, size, 'utf8');
+	chunk.writeUInt16BE(chunk.length, 4);
+	return chunk;
+}
 
 function ipAddressChunk(family, address, isSource) {
 	var ipv6 = Number(family) === 10;
