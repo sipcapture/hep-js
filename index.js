@@ -89,24 +89,9 @@ module.exports = {
 	ip_proto.writeUInt8(rcinfo.protocol,6);
 	ip_proto.writeUInt16BE(ip_proto.length,4);
 
-	/*ip*/
-	var d = rcinfo.srcIp ? rcinfo.srcIp.split('.') : ['127','0','0','1'];
-	var tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
-
-	var src_ip4 = Buffer.allocUnsafe(10);
-	src_ip4.writeUInt16BE(0x0000, 0);
-	src_ip4.writeUInt16BE(0x0003, 2);
-	src_ip4.writeUInt32BE(tmpip,6);
-	src_ip4.writeUInt16BE(src_ip4.length,4);
-
-	d = rcinfo.dstIp ? rcinfo.dstIp.split('.') : ['127','0','0','1'];
-	tmpip = ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
-
-	var dst_ip4 = Buffer.allocUnsafe(10);
-	dst_ip4.writeUInt16BE(0x0000, 0);
-	dst_ip4.writeUInt16BE(0x0004, 2);
-	dst_ip4.writeUInt32BE(tmpip,6);
-	dst_ip4.writeUInt16BE(dst_ip4.length,4);
+	/* ip: family 2 is IPv4 (chunks 0x0003/0x0004), family 10 is IPv6 (0x0005/0x0006) */
+	var src_ip = ipAddressChunk(ip_protocol_family, rcinfo.srcIp, true);
+	var dst_ip = ipAddressChunk(ip_protocol_family, rcinfo.dstIp, false);
 
 	var src_port = Buffer.allocUnsafe(8);
 	var tmpA = rcinfo.srcPort ? parseInt(rcinfo.srcPort,10) : 0;
@@ -141,7 +126,10 @@ module.exports = {
 	var proto_type = Buffer.allocUnsafe(7);
 	proto_type.writeUInt16BE(0x0000, 0);
 	proto_type.writeUInt16BE(0x000b,2);
-	proto_type.writeUInt8(rcinfo.proto_type,6);
+	var payloadTypeValue = rcinfo.proto_type;
+	if (payloadTypeValue == null && rcinfo.payloadType != null) payloadTypeValue = rcinfo.payloadType;
+	if (payloadTypeValue == null && rcinfo.payload_type != null) payloadTypeValue = rcinfo.payload_type;
+	proto_type.writeUInt8(payloadTypeValue,6);
 	proto_type.writeUInt16BE(proto_type.length,4);
 
 	tmpA = ToUint32(rcinfo.captureId);
@@ -240,8 +228,8 @@ module.exports = {
 			header, 
 			ip_family,
 			ip_proto,
-			src_ip4,
-			dst_ip4,
+			src_ip,
+			dst_ip,
 			src_port,
 			dst_port,
 			time_sec,
@@ -278,8 +266,8 @@ module.exports = {
 			header, 
 			ip_family,
 			ip_proto,
-			src_ip4,
-			dst_ip4,
+			src_ip,
+			dst_ip,
 			src_port,
 			dst_port,
 			time_sec,
@@ -308,8 +296,8 @@ module.exports = {
 			header, 
 			ip_family,
 			ip_proto,
-			src_ip4,
-			dst_ip4,
+			src_ip,
+			dst_ip,
 			src_port,
 			dst_port,
 			time_sec,
@@ -329,8 +317,8 @@ module.exports = {
 			header,
 			ip_family,
 			ip_proto,
-			src_ip4,
-			dst_ip4,
+			src_ip,
+			dst_ip,
 			src_port,
 			dst_port,
 			time_sec,
@@ -366,6 +354,101 @@ module.exports = {
 
 
 /* Functions */
+
+function ipAddressChunk(family, address, isSource) {
+	var ipv6 = Number(family) === 10;
+	var type = ipv6 ? (isSource ? 0x0005 : 0x0006) : (isSource ? 0x0003 : 0x0004);
+	var body = ipv6 ? ipv6ToBuffer(address || '::') : ipv4ToBuffer(address);
+	var chunk = Buffer.allocUnsafe(6 + body.length);
+	chunk.writeUInt16BE(0x0000, 0);
+	chunk.writeUInt16BE(type, 2);
+	body.copy(chunk, 6);
+	chunk.writeUInt16BE(chunk.length, 4);
+	return chunk;
+}
+
+function ipv4ToBuffer(address) {
+	var d = address ? String(address).split('.') : ['127','0','0','1'];
+	var buf = Buffer.allocUnsafe(4);
+	buf[0] = +d[0];
+	buf[1] = +d[1];
+	buf[2] = +d[2];
+	buf[3] = +d[3];
+	return buf;
+}
+
+function ipv6ToBuffer(address) {
+	var buf = Buffer.alloc(16);
+	var str = String(address || '::');
+	var zone = str.indexOf('%');
+	if (zone !== -1) str = str.slice(0, zone);
+	var halves = str.split('::');
+	if (halves.length > 2) throw new Error('Bad IPv6 address');
+	var head = ipv6Groups(halves[0]);
+	var tail = halves.length === 2 ? ipv6Groups(halves[1]) : [];
+	var groups;
+	if (halves.length === 1) {
+		if (head.length !== 8) throw new Error('Bad IPv6 address');
+		groups = head;
+	} else {
+		var missing = 8 - head.length - tail.length;
+		if (missing < 1) throw new Error('Bad IPv6 address');
+		groups = head.concat(new Array(missing).fill(0), tail);
+	}
+	for (var i = 0; i < 8; i++) buf.writeUInt16BE(groups[i], i * 2);
+	return buf;
+}
+
+function ipv6Groups(part) {
+	if (!part) return [];
+	var out = [];
+	var pieces = part.split(':');
+	for (var i = 0; i < pieces.length; i++) {
+		var group = pieces[i];
+		if (group.indexOf('.') !== -1) {
+			var octets = group.split('.');
+			if (octets.length !== 4) throw new Error('Bad IPv6 address');
+			out.push(((+octets[0]) << 8) | (+octets[1]));
+			out.push(((+octets[2]) << 8) | (+octets[3]));
+			continue;
+		}
+		if (!/^[0-9a-fA-F]{1,4}$/.test(group)) throw new Error('Bad IPv6 address');
+		out.push(parseInt(group, 16));
+	}
+	return out;
+}
+
+function formatIPv6(buf) {
+	var bestStart = -1;
+	var bestLen = 0;
+	var i = 0;
+	while (i < 8) {
+		if (buf.readUInt16BE(i * 2) !== 0) { i++; continue; }
+		var j = i;
+		while (j < 8 && buf.readUInt16BE(j * 2) === 0) j++;
+		if ((j - i) > bestLen) {
+			bestStart = i;
+			bestLen = j - i;
+		}
+		i = j;
+	}
+	if (bestLen < 2) bestStart = -1;
+	var out = [];
+	for (i = 0; i < 8;) {
+		if (i === bestStart) {
+			out.push('');
+			i += bestLen;
+			if (i >= 8) out.push('');
+			continue;
+		}
+		out.push(buf.readUInt16BE(i * 2).toString(16));
+		i++;
+	}
+	var text = out.join(':');
+	if (text === ':') return '::';
+	if (text.charAt(0) === ':') return ':' + text;
+	return text;
+}
 
 var modulo = function (a, b) {
         return a - Math.floor(a/b)*b;
@@ -467,6 +550,10 @@ var hepDecode = function(data){
 	return { rcinfo: { srcIp: hepIps.parse(data.chunk).ip.join('.') } };
     case 4:
 	return { rcinfo: { dstIp: hepIps.parse(data.chunk).ip.join('.') } };
+    case 5:
+	return { rcinfo: { srcIp: formatIPv6(data.chunk) } };
+    case 6:
+	return { rcinfo: { dstIp: formatIPv6(data.chunk) } };
     case 7:
 	return { rcinfo: { srcPort: data.chunk.readUInt16BE() } };
     case 8:
